@@ -1,0 +1,69 @@
+services:
+  wordpress:
+    environment:
+      PROD_SITE_URL: https://account.libresign.coop
+      LOCAL_SITE_URL: http://localhost
+      NEXTCLOUD_LOCAL_URL: ${NEXTCLOUD_LOCAL_URL:-http://host.docker.internal:8080}
+      WORDPRESS_LOCAL_USERS_PASSWORD: ${WORDPRESS_LOCAL_USERS_PASSWORD}
+      WORDPRESS_LOCAL_RESET_ALL_USERS_PASSWORDS: ${WORDPRESS_LOCAL_RESET_ALL_USERS_PASSWORDS:-1}
+      WORDPRESS_LOCAL_RESET_PASSWORD_FOR_USER: ${WORDPRESS_LOCAL_RESET_PASSWORD_FOR_USER:-}
+      WORDPRESS_SETUP_CONFIG_YAML: |
+        wordpress_org_plugins:
+          - advanced-custom-fields
+          - block-visibility
+          - code-snippets
+          - wp-piwik
+          - kadence-blocks
+          - kadence-woocommerce-email-designer
+          - product-open-pricing-name-your-price-for-woocommerce
+          - variation-swatches-woo
+          - woocommerce
+          - woocommerce-gateway-stripe
+        wordpress_archive_plugins: []
+        wordpress_custom_plugins:
+          - slug: polylang-pro
+            source: https://gitlab.com/wordpress-premium/polylang-pro
+            post_install_commands:
+              - if [ ! -L "$$PLUGIN_DIR/integrations/ACF" ]; then rm -rf "$$PLUGIN_DIR/integrations/ACF" && ln -s acf "$$PLUGIN_DIR/integrations/ACF"; fi || true
+          - slug: libresign-wp-customizations
+            source: https://github.com/LibreSign/libresign-wp-customizations.git
+          - slug: wp-simple-smtp
+            source: https://github.com/LibreCodeCoop/wp-simple-smtp.git
+            post_install_commands:
+              - wp option update smtp_xmailer LibreSign
+              - wp option update smtp_hostname localhost
+              - wp option update smtp_host mailpit
+              - wp option update smtp_port 1025
+              - wp option update smtp_auth 0
+              - wp option update smtp_user ''
+              - wp option update smtp_pass ''
+              - wp option update smtp_secure ''
+              - wp option update smtp_from ${SMTP_FROM_EMAIL:-noreply@example.com}
+              - wp option update smtp_name LibreSign
+          - slug: woocommerce-nextcloud-admin-group-manager
+            source: https://github.com/LibreSign/woocommerce-nextcloud-admin-group-manager.git
+            post_install_commands:
+              - wp option update nextcloud_api_host $$NEXTCLOUD_LOCAL_URL
+              - wp option update nextcloud_api_login ${NEXTCLOUD_ADMIN_USER:-admin}
+              - wp option update nextcloud_api_password ${NEXTCLOUD_ADMIN_PASSWORD}
+          - slug: woocommerce-restrict-switch
+            source: https://github.com/LibreSign/woocommerce-restrict-switch.git
+          - slug: woocommerce-subscriptions
+            source: https://github.com/pronamic/woocommerce-subscriptions.git
+        wordpress_custom_themes:
+          - slug: libresign
+            source: https://github.com/LibreSign/wordpress-theme.git
+
+  nginx:
+    ports:
+      - "80:80"
+
+  mariadb:
+    extends:
+      file: wordpress-docker/common-services.yml
+      service: mariadb
+
+  mailpit:
+    image: axllent/mailpit:latest
+    ports:
+      - "127.0.0.1:8025:8025"
