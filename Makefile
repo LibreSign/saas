@@ -10,7 +10,7 @@ NEXTCLOUD_APPS_DIR := $(NEXTCLOUD_DIR)/volumes/nextcloud/apps-extra
 
 # Docker Compose commands
 NEXTCLOUD_COMPOSE := HTTP_PORT=$(NEXTCLOUD_HTTP_PORT) docker compose -f $(NEXTCLOUD_DIR)/docker-compose.yml
-WORDPRESS_COMPOSE := docker compose -f $(WORDPRESS_DIR)/docker-compose.yml -f $(WORDPRESS_DIR)/docker-compose.override.yml
+WORDPRESS_COMPOSE := docker compose -f $(WORDPRESS_DIR)/docker-compose.yml -f ./docker-compose.override.yml
 NEXTCLOUD_OCC := $(NEXTCLOUD_COMPOSE) exec -u www-data nextcloud php occ
 WORDPRESS_CLI := $(WORDPRESS_COMPOSE) exec wordpress wp --allow-root
 
@@ -21,7 +21,11 @@ _help:
 	@echo "  make down  - Stop all services"
 	@echo ""
 	@echo "Environment variables:"
-	@echo "  NEXTCLOUD_HTTP_PORT  - Nextcloud port (default: 8080)"
+	@echo "  NEXTCLOUD_HTTP_PORT              - Nextcloud port (default: 8080)"
+	@echo "  NEXTCLOUD_ADMIN_USER             - Nextcloud admin username (default: admin)"
+	@echo "  NEXTCLOUD_ADMIN_PASSWORD         - Nextcloud admin password (required)"
+	@echo "  WORDPRESS_LOCAL_USERS_PASSWORD   - WordPress users password (required)"
+	@echo "  WORDPRESS_LOCAL_RESET_ALL_USERS_PASSWORDS - Reset all passwords on startup (default: 1)"
 	@echo ""
 
 up: _connect-networks _setup-apps _provision-user
