@@ -1,0 +1,71 @@
+                   GNU AFFERO GENERAL PUBLIC LICENSE
+                       Version 3, 19 November 2007
+
+ Copyright (C) 2007 Free Software Foundation, Inc. <https://fsf.org/>
+ Everyone is permitted to copy and distribute verbatim copies
+ of this license document, but changing it is not allowed.
+
+                            Preamble
+
+  The GNU Affero General Public License is a free, copyleft license for
+software and other kinds of works, specifically designed to ensure
+cooperation with the community in the case of network server software.
+
+  The licenses for most software and other practical works are designed
+to take away your freedom to share and change the works.  By contrast,
+the GNU Affero General Public License is intended to guarantee your
+freedom to share and change all versions of a program--to make sure it
+remains free software for all its users.
+
+  When we speak of free software, we are referring to freedom, not
+price.  Our General Public Licenses are designed to make sure that you
+have the freedom to distribute copies of free software (and charge for
+them if you wish), that you receive source code or can get it, that you
+can change the software or use pieces of it in new free programs, and
+that you know you can do these things.
+
+  Developers that use the GNU Affero General Public License protect your
+rights with two steps: (1) assert copyright on the software, and (2)
+offer you this License which gives you legal permission to copy,
+distribute and/or modify the software.
+
+  A secondary benefit of defending all users' freedom is that
+improvements made in alternate versions of the program, if they receive
+widespread use, become available for the other developers to
+incorporate.  Many developers of free software are heartened and
+encouraged by the resulting cooperation.  However, in the case of
+software used on network servers, this result may fail to come about.
+The GNU General Public License permits making a modified version and
+letting the public access it on a server without ever releasing its
+source code to the public.
+
+  The GNU Affero General Public License addresses this problem by
+defining "user interaction" in a way that includes interaction through a
+computer network.  Therefore, the right to modify the Program is linked
+with the obligation to share the modified sources with users of the
+modified version running on a server.
+
+  Therefore, the GNU Affero General Public License requires that you
+share the source code of any modifications you make to comply with the
+requirements of user interaction.  This requirement is designed to ensure
+that the source code that is most useful to the community, and users can
+rebuild and redistribute it, remains available to users.
+
+  Although this is designed primarily to benefit the community of
+developers and users, it is designed to ensure that if a modified version
+of the program is used to provide services for users in a way that is
+accessible through a computer network, the modified source code should be
+made available to those users in a way that would normally be expected.
+
+  Specifically, paragraphs 13 of the GNU Affero General Public License
+deal with remote access to the program.
+
+  If you modify the Program, you must mark your modifications to state that
+you have changed the software and note the date of any change.  You must
+also provide, in a reasonable manner, notice of the availability of the
+source code of the modified version to users of that system who interact
+with your modified program through a computer network (with clear means of
+access to the source), such as through a "Source" link.
+
+  You should have received a copy of the GNU Affero General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.

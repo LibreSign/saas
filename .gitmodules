@@ -1,0 +1,6 @@
+[submodule "nextcloud-development"]
+	path = nextcloud-development
+	url = https://github.com/LibreCodeCoop/nextcloud-docker-development.git
+[submodule "wordpress-docker"]
+	path = wordpress-docker
+	url = https://github.com/LibreCodeCoop/wordpress-docker.git
