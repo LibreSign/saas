@@ -7,6 +7,8 @@ WORDPRESS_DIR := $(ROOT_DIR)/wordpress-docker
 NEXTCLOUD_HTTP_PORT ?= 8080
 NEXTCLOUD_BASE_URL := http://localhost:$(NEXTCLOUD_HTTP_PORT)
 NEXTCLOUD_APPS_DIR := $(NEXTCLOUD_DIR)/volumes/nextcloud/apps-extra
+LOCAL_UID := $(shell id -u)
+LOCAL_GID := $(shell id -g)
 
 # Docker Compose commands
 NEXTCLOUD_COMPOSE := HTTP_PORT=$(NEXTCLOUD_HTTP_PORT) docker compose -f $(NEXTCLOUD_DIR)/docker-compose.yml
@@ -23,18 +25,55 @@ _help:
 	@echo "Environment variables:"
 	@echo "  NEXTCLOUD_HTTP_PORT              - Nextcloud port (default: 8080)"
 	@echo "  NEXTCLOUD_ADMIN_USER             - Nextcloud admin username (default: admin)"
-	@echo "  NEXTCLOUD_ADMIN_PASSWORD         - Nextcloud admin password (required)"
-	@echo "  WORDPRESS_LOCAL_USERS_PASSWORD   - WordPress users password (required)"
+	@echo "  NEXTCLOUD_ADMIN_PASSWORD         - Nextcloud admin password (default: admin)"
+	@echo "  WORDPRESS_LOCAL_USERS_PASSWORD   - WordPress users password (default: admin)"
 	@echo "  WORDPRESS_LOCAL_RESET_ALL_USERS_PASSWORDS - Reset all passwords on startup (default: 1)"
 	@echo ""
 
-up: _connect-networks _setup-apps _provision-user
+up: _start-services _wait-wordpress _wait-nextcloud _fix-nextcloud-apps-permissions _enable-wordpress-plugin _connect-networks _setup-apps _provision-user
 	@echo "Environment up."
 
 down:
 	$(NEXTCLOUD_COMPOSE) down
 	$(WORDPRESS_COMPOSE) down
 	@echo "Environment down."
+
+_start-services:
+	@echo "Starting services..."
+	@$(WORDPRESS_COMPOSE) up -d mariadb wordpress nginx
+	@$(NEXTCLOUD_COMPOSE) up -d mysql redis nextcloud nginx
+
+_wait-wordpress:
+	@echo "Waiting for WordPress to be ready..."
+	@attempt=0; \
+	until $(WORDPRESS_CLI) core is-installed >/dev/null 2>&1; do \
+		attempt=$$((attempt + 1)); \
+		if [ $$attempt -ge 60 ]; then \
+			echo "WordPress is not ready after 120s"; \
+			exit 1; \
+		fi; \
+		sleep 2; \
+	done
+
+_wait-nextcloud:
+	@echo "Waiting for Nextcloud to be ready..."
+	@attempt=0; \
+	until $(NEXTCLOUD_COMPOSE) exec -T nextcloud pgrep php-fpm >/dev/null 2>&1; do \
+		attempt=$$((attempt + 1)); \
+		if [ $$attempt -ge 120 ]; then \
+			echo "Nextcloud is not ready for app operations after 240s"; \
+			exit 1; \
+		fi; \
+		sleep 2; \
+	done
+
+_fix-nextcloud-apps-permissions:
+	@echo "Fixing Nextcloud apps-extra permissions..."
+	@$(NEXTCLOUD_COMPOSE) exec -u root nextcloud sh -lc 'mkdir -p /var/www/html/apps-extra && chown -R $(LOCAL_UID):$(LOCAL_GID) /var/www/html/apps-extra' >/dev/null
+
+_enable-wordpress-plugin:
+	@echo "Enabling WordPress plugin..."
+	@$(WORDPRESS_CLI) plugin activate woocommerce-nextcloud-admin-group-manager >/dev/null || true
 
 _setup-apps: _ensure-wordpress-app _ensure-nextcloud-app _enable-apps _set-wordpress-dsn
 
@@ -60,6 +99,7 @@ _enable-apps:
 	@echo "Enabling apps..."
 	@$(NEXTCLOUD_OCC) app:enable wordpress_login_backend >/dev/null || true
 	@$(NEXTCLOUD_OCC) app:enable admin_group_manager --force >/dev/null || true
+	@$(NEXTCLOUD_OCC) app:enable groupquota --force >/dev/null || true
 
 _set-wordpress-dsn:
 	@$(NEXTCLOUD_OCC) config:system:set wordpress_dsn --value "mysql:host=mariadb;port=3306;dbname=wordpress;user=root;password=root" >/dev/null
