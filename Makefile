@@ -4,7 +4,7 @@
 ROOT_DIR := $(shell pwd)
 NEXTCLOUD_DIR := $(ROOT_DIR)/nextcloud-development
 WORDPRESS_DIR := $(ROOT_DIR)/wordpress-docker
-NEXTCLOUD_HTTP_PORT ?= 8080
+NEXTCLOUD_HTTP_PORT ?= 8082
 NEXTCLOUD_BASE_URL := http://localhost:$(NEXTCLOUD_HTTP_PORT)
 NEXTCLOUD_APPS_DIR := $(NEXTCLOUD_DIR)/volumes/nextcloud/apps-extra
 LOCAL_UID := $(shell id -u)
@@ -12,7 +12,7 @@ LOCAL_GID := $(shell id -g)
 
 # Docker Compose commands
 NEXTCLOUD_COMPOSE := HTTP_PORT=$(NEXTCLOUD_HTTP_PORT) docker compose -f $(NEXTCLOUD_DIR)/docker-compose.yml
-WORDPRESS_COMPOSE := docker compose -f $(WORDPRESS_DIR)/docker-compose.yml -f ./docker-compose.override.yml
+WORDPRESS_COMPOSE := docker compose -f $(WORDPRESS_DIR)/docker-compose.yml -f $(ROOT_DIR)/docker-compose.override.yml
 NEXTCLOUD_OCC := $(NEXTCLOUD_COMPOSE) exec -u www-data nextcloud php occ
 WORDPRESS_CLI := $(WORDPRESS_COMPOSE) exec wordpress wp --allow-root
 
@@ -23,7 +23,7 @@ _help:
 	@echo "  make down  - Stop all services"
 	@echo ""
 	@echo "Environment variables:"
-	@echo "  NEXTCLOUD_HTTP_PORT              - Nextcloud port (default: 8080)"
+	@echo "  NEXTCLOUD_HTTP_PORT              - Nextcloud port (default: 8082)"
 	@echo "  NEXTCLOUD_ADMIN_USER             - Nextcloud admin username (default: admin)"
 	@echo "  NEXTCLOUD_ADMIN_PASSWORD         - Nextcloud admin password (default: admin)"
 	@echo "  WORDPRESS_LOCAL_USERS_PASSWORD   - WordPress users password (default: admin)"
@@ -39,8 +39,9 @@ down:
 	@echo "Environment down."
 
 _start-services:
-	@echo "Starting services..."
+	@echo "Starting WordPress services..."
 	@$(WORDPRESS_COMPOSE) up -d mariadb wordpress nginx
+	@echo "Starting Nextcloud services..."
 	@$(NEXTCLOUD_COMPOSE) up -d mysql redis nextcloud nginx
 
 _wait-wordpress:
