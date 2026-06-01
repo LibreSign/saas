@@ -3,7 +3,6 @@
 # Variables
 ROOT_DIR := $(shell pwd)
 NEXTCLOUD_DIR := $(ROOT_DIR)/nextcloud-development
-WORDPRESS_DIR := $(ROOT_DIR)/wordpress-docker
 NEXTCLOUD_HTTP_PORT ?= 8082
 NEXTCLOUD_BASE_URL := http://localhost:$(NEXTCLOUD_HTTP_PORT)
 NEXTCLOUD_APPS_DIR := $(NEXTCLOUD_DIR)/volumes/nextcloud/apps-extra
@@ -12,7 +11,7 @@ LOCAL_GID := $(shell id -g)
 
 # Docker Compose commands
 NEXTCLOUD_COMPOSE := HTTP_PORT=$(NEXTCLOUD_HTTP_PORT) docker compose -f $(NEXTCLOUD_DIR)/docker-compose.yml
-WORDPRESS_COMPOSE := docker compose -f $(WORDPRESS_DIR)/docker-compose.yml -f $(ROOT_DIR)/docker-compose.override.yml
+WORDPRESS_COMPOSE := docker compose -f $(ROOT_DIR)/docker-compose.override.yml
 NEXTCLOUD_OCC := $(NEXTCLOUD_COMPOSE) exec -u www-data nextcloud php occ
 WORDPRESS_CLI := $(WORDPRESS_COMPOSE) exec wordpress wp --allow-root
 

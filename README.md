@@ -14,6 +14,13 @@ make down
 make help  # View all available commands
 ```
 
+If you want to run Docker Compose directly from the repository root:
+
+```bash
+docker compose -f docker-compose.override.yml up -d
+docker compose -f docker-compose.override.yml down
+```
+
 ## Integration Flow
 
 WordPress is the customer-facing commerce and account portal (plans, subscriptions, invoices, payments, and account reports).
