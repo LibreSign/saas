@@ -63,3 +63,20 @@ sequenceDiagram
     User->>NC: login with WordPress credentials
     NC->>WLB: validate credentials
 ```
+
+### User Journey
+
+```mermaid
+flowchart TD
+    A[Visitor arrives at account page] --> B{Has an account?}
+    B -- No --> C[Click Criar workspace grátis]
+    C --> D[Fill name, organization, email, password]
+    D --> E[Accept terms and privacy policy]
+    E --> F[Create account]
+    F --> G[Redirect to Minha conta]
+    B -- Yes --> H[Click Já tenho acesso]
+    H --> I[Log in]
+    I --> G
+    G --> J[Review plan, payment methods, and profile]
+    J --> K[Start signing documents]
+```
