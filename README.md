@@ -8,6 +8,15 @@ Orchestrates LibreSign provisioning with WordPress as client-facing layer for Sa
 
 ## Quick Start
 
+The Nextcloud and WordPress environments are git submodules. Initialize them
+before the first `make up`:
+
+```bash
+git submodule update --init
+```
+
+Then start the stack:
+
 ```bash
 make up
 make down
