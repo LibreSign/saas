@@ -9,6 +9,11 @@ NEXTCLOUD_BASE_URL := http://localhost:$(NEXTCLOUD_HTTP_PORT)
 NEXTCLOUD_APPS_DIR := $(NEXTCLOUD_DIR)/volumes/nextcloud/apps-extra
 LOCAL_UID := $(shell id -u)
 LOCAL_GID := $(shell id -g)
+WORDPRESS_SITE_URL ?= http://localhost
+WORDPRESS_SITE_TITLE ?= LibreSign SaaS
+WORDPRESS_ADMIN_USER ?= admin
+WORDPRESS_ADMIN_PASSWORD ?= admin
+WORDPRESS_ADMIN_EMAIL ?= admin@example.com
 
 # Docker Compose commands
 NEXTCLOUD_COMPOSE := HTTP_PORT=$(NEXTCLOUD_HTTP_PORT) docker compose -f $(NEXTCLOUD_DIR)/docker-compose.yml
@@ -26,11 +31,15 @@ _help:
 	@echo "  NEXTCLOUD_HTTP_PORT              - Nextcloud port (default: 8082)"
 	@echo "  NEXTCLOUD_ADMIN_USER             - Nextcloud admin username (default: admin)"
 	@echo "  NEXTCLOUD_ADMIN_PASSWORD         - Nextcloud admin password (default: admin)"
+	@echo "  WORDPRESS_SITE_URL               - WordPress site URL for first install (default: http://localhost)"
+	@echo "  WORDPRESS_ADMIN_USER             - WordPress admin username for first install (default: admin)"
+	@echo "  WORDPRESS_ADMIN_PASSWORD         - WordPress admin password for first install (default: admin)"
+	@echo "  WORDPRESS_ADMIN_EMAIL            - WordPress admin email for first install (default: admin@example.com)"
 	@echo "  WORDPRESS_LOCAL_USERS_PASSWORD   - WordPress users password (default: admin)"
 	@echo "  WORDPRESS_LOCAL_RESET_ALL_USERS_PASSWORDS - Reset all passwords on startup (default: 1)"
 	@echo ""
 
-up: _start-services _wait-wordpress _wait-nextcloud _fix-nextcloud-apps-permissions _enable-wordpress-plugin _connect-networks _setup-apps _provision-user
+up: _start-services _install-wordpress _wait-wordpress _wait-nextcloud _fix-nextcloud-apps-permissions _enable-wordpress-plugin _connect-networks _setup-apps _provision-user
 	@echo "Environment up."
 
 down:
@@ -43,6 +52,34 @@ _start-services:
 	@$(WORDPRESS_COMPOSE) up -d mariadb wordpress nginx
 	@echo "Starting Nextcloud services..."
 	@$(NEXTCLOUD_COMPOSE) up -d mysql redis nextcloud nginx
+
+_install-wordpress:
+	@echo "Ensuring WordPress core is installed..."
+	@attempt=0; \
+	until output=$$($(WORDPRESS_CLI) core is-installed 2>&1); status=$$?; \
+		[ $$status -eq 0 ] || echo "$$output" | grep -qi "not installed"; do \
+		attempt=$$((attempt + 1)); \
+		if [ $$attempt -ge 60 ]; then \
+			echo "WordPress CLI/database not reachable after 120s"; \
+			echo "$$output"; \
+			exit 1; \
+		fi; \
+		sleep 2; \
+	done; \
+	if [ $$status -eq 0 ]; then \
+		echo "WordPress already installed."; \
+	else \
+		echo "WordPress not installed; running core install..."; \
+		$(WORDPRESS_CLI) core install \
+			--url="$(WORDPRESS_SITE_URL)" \
+			--title="$(WORDPRESS_SITE_TITLE)" \
+			--admin_user="$(WORDPRESS_ADMIN_USER)" \
+			--admin_password="$(WORDPRESS_ADMIN_PASSWORD)" \
+			--admin_email="$(WORDPRESS_ADMIN_EMAIL)" \
+			--skip-email; \
+		echo "Restarting WordPress container to install plugins and themes..."; \
+		$(WORDPRESS_COMPOSE) restart wordpress >/dev/null; \
+	fi
 
 _wait-wordpress:
 	@echo "Waiting for WordPress to be ready..."
