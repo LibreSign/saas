@@ -28,13 +28,17 @@ services and rebuilds local buildable services before starting the stack, so
 changes pulled in the submodules are picked up without separate manual pull or
 build steps.
 
+On a fresh WordPress database, `make up` also performs the initial WordPress
+installation via WP-CLI and restarts the WordPress container once so the
+`wordpress-docker` entrypoint can install the configured plugins and themes.
+
 ## Integration Flow
 
 WordPress is the customer-facing commerce and account portal (plans, subscriptions, invoices, payments, and account reports).
 
 ### Component Roles
 
-- [`Makefile`](./Makefile): orchestrates local development environment (refresh images, start services, connect networks, setup and enable required Nextcloud apps).
+- [`Makefile`](./Makefile): orchestrates local development environment (refresh images, start services, perform first WordPress install when needed, connect networks, setup and enable required Nextcloud apps).
 - [`wordpress-docker`](https://github.com/LibreCodeCoop/wordpress-docker): storefront and customer account portal (checkout, subscriptions, invoices, billing).
 - [`woocommerce-nextcloud-admin-group-manager`](https://github.com/LibreSign/woocommerce-nextcloud-admin-group-manager) (WordPress plugin): converts subscription/account events into integration calls.
 - [`nextcloud-development`](https://github.com/LibreCodeCoop/nextcloud-docker-development): local Nextcloud runtime where integration apps are installed/enabled.
@@ -54,6 +58,7 @@ sequenceDiagram
     Make->>WP: refresh remote images
     Make->>NC: refresh remote images
     Make->>WP: start services
+    Make->>WP: install WordPress core on first boot
     Make->>NC: start services
     Make->>NC: clone and enable admin_group_manager
     Make->>NC: clone and enable wordpress_login_backend
