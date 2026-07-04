@@ -48,7 +48,7 @@ _help:
 
 help: _help
 
-up: _refresh-service-images _start-services _install-wordpress _wait-wordpress _wait-nextcloud _fix-nextcloud-apps-permissions _enable-wordpress-plugin _connect-networks _setup-apps _provision-user
+up: _prepare-site-output-dir _refresh-service-images _start-services _install-wordpress _wait-wordpress _wait-nextcloud _fix-nextcloud-apps-permissions _enable-wordpress-plugin _connect-networks _setup-apps _provision-user
 	@echo "Environment up."
 
 down:
@@ -56,6 +56,12 @@ down:
 	$(NEXTCLOUD_COMPOSE) down
 	$(WORDPRESS_COMPOSE) down
 	@echo "Environment down."
+
+_prepare-site-output-dir:
+	@echo "Preparing site output directory..."
+	@rm -rf $(SITE_DIR)/build_local
+	@mkdir -p $(SITE_DIR)/build_local
+	@chmod 775 $(SITE_DIR)/build_local
 
 _refresh-service-images:
 	@echo "Refreshing site images..."
