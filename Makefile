@@ -24,7 +24,7 @@ WORDPRESS_CLI := $(WORDPRESS_COMPOSE) exec wordpress wp --allow-root
 _help:
 	@echo "LibreSign SaaS - Available commands:"
 	@echo ""
-	@echo "  make up    - Start all services (WordPress + Nextcloud)"
+	@echo "  make up    - Refresh images and start all services (WordPress + Nextcloud)"
 	@echo "  make down  - Stop all services"
 	@echo ""
 	@echo "Environment variables:"
@@ -39,13 +39,21 @@ _help:
 	@echo "  WORDPRESS_LOCAL_RESET_ALL_USERS_PASSWORDS - Reset all passwords on startup (default: 1)"
 	@echo ""
 
-up: _start-services _install-wordpress _wait-wordpress _wait-nextcloud _fix-nextcloud-apps-permissions _enable-wordpress-plugin _connect-networks _setup-apps _provision-user
+up: _refresh-service-images _start-services _install-wordpress _wait-wordpress _wait-nextcloud _fix-nextcloud-apps-permissions _enable-wordpress-plugin _connect-networks _setup-apps _provision-user
 	@echo "Environment up."
 
 down:
 	$(NEXTCLOUD_COMPOSE) down
 	$(WORDPRESS_COMPOSE) down
 	@echo "Environment down."
+
+_refresh-service-images:
+	@echo "Refreshing WordPress images..."
+	@$(WORDPRESS_COMPOSE) pull --ignore-buildable wordpress nginx
+	@echo "Rebuilding WordPress buildable services..."
+	@$(WORDPRESS_COMPOSE) build mariadb
+	@echo "Refreshing Nextcloud images..."
+	@$(NEXTCLOUD_COMPOSE) pull mysql redis nextcloud nginx
 
 _start-services:
 	@echo "Starting WordPress services..."
