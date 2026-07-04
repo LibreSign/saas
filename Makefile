@@ -1,4 +1,4 @@
-.PHONY: up down help _help
+.PHONY: up down help _help site wordpress nextcloud _up-site _up-wordpress _up-nextcloud _up-integration
 
 # Variables
 ROOT_DIR := $(shell pwd)
@@ -18,6 +18,9 @@ WORDPRESS_SITE_TITLE ?= LibreSign SaaS
 WORDPRESS_ADMIN_USER ?= admin
 WORDPRESS_ADMIN_PASSWORD ?= admin
 WORDPRESS_ADMIN_EMAIL ?= admin@example.com
+COMPONENT_TARGETS := site wordpress nextcloud
+SELECTED_COMPONENTS := $(filter $(COMPONENT_TARGETS),$(MAKECMDGOALS))
+UP_COMPONENTS := $(if $(SELECTED_COMPONENTS),$(SELECTED_COMPONENTS),$(COMPONENT_TARGETS))
 
 # Docker Compose commands
 NEXTCLOUD_COMPOSE := HTTP_PORT=$(NEXTCLOUD_HTTP_PORT) docker compose -f $(NEXTCLOUD_DIR)/docker-compose.yml
@@ -29,7 +32,11 @@ WORDPRESS_CLI := $(WORDPRESS_COMPOSE) exec wordpress wp --allow-root
 _help:
 	@echo "LibreSign SaaS - Available commands:"
 	@echo ""
-	@echo "  make up    - Refresh images and start all services (WordPress + site + Nextcloud)"
+	@echo "  make up                        - Refresh images and start all services"
+	@echo "  make up site                   - Start only the static site stack"
+	@echo "  make up wordpress              - Start only the WordPress stack"
+	@echo "  make up nextcloud              - Start only the Nextcloud stack"
+	@echo "  make up wordpress nextcloud    - Start only the selected stacks"
 	@echo "  make down  - Stop all services"
 	@echo ""
 	@echo "Environment variables:"
@@ -48,8 +55,17 @@ _help:
 
 help: _help
 
-up: _prepare-site-output-dir _refresh-service-images _start-services _install-wordpress _wait-wordpress _wait-nextcloud _fix-nextcloud-apps-permissions _enable-wordpress-plugin _connect-networks _setup-apps _provision-user
-	@echo "Environment up."
+up:
+	@for component in $(UP_COMPONENTS); do \
+		$(MAKE) --no-print-directory _up-$$component; \
+	done
+	@if [ -n "$(filter wordpress,$(UP_COMPONENTS))" ] && [ -n "$(filter nextcloud,$(UP_COMPONENTS))" ]; then \
+		$(MAKE) --no-print-directory _up-integration; \
+	fi
+	@echo "Environment up ($(UP_COMPONENTS))."
+
+site wordpress nextcloud:
+	@:
 
 down:
 	$(SITE_COMPOSE) down
@@ -57,27 +73,44 @@ down:
 	$(WORDPRESS_COMPOSE) down
 	@echo "Environment down."
 
+_up-site: _prepare-site-output-dir _refresh-site-images _start-site
+
+_up-wordpress: _refresh-wordpress-images _start-wordpress _install-wordpress _wait-wordpress _enable-wordpress-plugin
+
+_up-nextcloud: _refresh-nextcloud-images _start-nextcloud _wait-nextcloud _fix-nextcloud-apps-permissions
+
+_up-integration: _connect-networks _setup-apps _provision-user
+
 _prepare-site-output-dir:
 	@echo "Preparing site output directory..."
 	@rm -rf $(SITE_DIR)/build_local
 	@mkdir -p $(SITE_DIR)/build_local
 	@chmod 775 $(SITE_DIR)/build_local
 
-_refresh-service-images:
+
+_refresh-site-images:
 	@echo "Refreshing site images..."
 	@$(SITE_COMPOSE) pull php web
+
+_refresh-wordpress-images:
 	@echo "Refreshing WordPress images..."
 	@$(WORDPRESS_COMPOSE) pull --ignore-buildable wordpress nginx
 	@echo "Rebuilding WordPress buildable services..."
 	@$(WORDPRESS_COMPOSE) build mariadb
+
+_refresh-nextcloud-images:
 	@echo "Refreshing Nextcloud images..."
 	@$(NEXTCLOUD_COMPOSE) pull mysql redis nextcloud nginx
 
-_start-services:
+_start-site:
 	@echo "Starting site services..."
 	@$(SITE_COMPOSE) up -d php web
+
+_start-wordpress:
 	@echo "Starting WordPress services..."
 	@$(WORDPRESS_COMPOSE) up -d mariadb wordpress nginx
+
+_start-nextcloud:
 	@echo "Starting Nextcloud services..."
 	@$(NEXTCLOUD_COMPOSE) up -d mysql redis nextcloud nginx
 

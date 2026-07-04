@@ -19,9 +19,19 @@ Then start the stack:
 
 ```bash
 make up
+make up site
+make up wordpress nextcloud
 make down
 make help  # View all available commands
 ```
+
+You can pass component names after `make up` to start only part of the local
+stack:
+
+- `make up site`
+- `make up wordpress`
+- `make up nextcloud`
+- `make up wordpress nextcloud`
 
 To keep local development simple and avoid `/etc/hosts` changes, the static site
 is exposed on its own localhost port instead of using the production subdomain
