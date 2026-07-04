@@ -64,8 +64,28 @@ _start-services:
 _install-wordpress:
 	@echo "Ensuring WordPress core is installed..."
 	@attempt=0; \
-	until output=$$($(WORDPRESS_CLI) core is-installed 2>&1); status=$$?; \
-		[ $$status -eq 0 ] || echo "$$output" | grep -qi "not installed"; do \
+	while true; do \
+		output=$$($(WORDPRESS_CLI) option get siteurl 2>&1); status=$$?; \
+		if [ $$status -eq 0 ]; then \
+			echo "WordPress already installed."; \
+			break; \
+		fi; \
+		if echo "$$output" | grep -qi "not installed"; then \
+			echo "WordPress not installed; running core install..."; \
+			if ! $(WORDPRESS_CLI) core install \
+				--url="$(WORDPRESS_SITE_URL)" \
+				--title="$(WORDPRESS_SITE_TITLE)" \
+				--admin_user="$(WORDPRESS_ADMIN_USER)" \
+				--admin_password="$(WORDPRESS_ADMIN_PASSWORD)" \
+				--admin_email="$(WORDPRESS_ADMIN_EMAIL)" \
+				--skip-email; then \
+				echo "WordPress core install failed."; \
+				exit 1; \
+			fi; \
+			echo "Restarting WordPress container to install plugins and themes..."; \
+			$(WORDPRESS_COMPOSE) restart wordpress >/dev/null; \
+			break; \
+		fi; \
 		attempt=$$((attempt + 1)); \
 		if [ $$attempt -ge 60 ]; then \
 			echo "WordPress CLI/database not reachable after 120s"; \
@@ -73,29 +93,16 @@ _install-wordpress:
 			exit 1; \
 		fi; \
 		sleep 2; \
-	done; \
-	if [ $$status -eq 0 ]; then \
-		echo "WordPress already installed."; \
-	else \
-		echo "WordPress not installed; running core install..."; \
-		$(WORDPRESS_CLI) core install \
-			--url="$(WORDPRESS_SITE_URL)" \
-			--title="$(WORDPRESS_SITE_TITLE)" \
-			--admin_user="$(WORDPRESS_ADMIN_USER)" \
-			--admin_password="$(WORDPRESS_ADMIN_PASSWORD)" \
-			--admin_email="$(WORDPRESS_ADMIN_EMAIL)" \
-			--skip-email; \
-		echo "Restarting WordPress container to install plugins and themes..."; \
-		$(WORDPRESS_COMPOSE) restart wordpress >/dev/null; \
-	fi
+	done
 
 _wait-wordpress:
 	@echo "Waiting for WordPress to be ready..."
 	@attempt=0; \
-	until $(WORDPRESS_CLI) core is-installed >/dev/null 2>&1; do \
+	until output=$$($(WORDPRESS_CLI) option get siteurl 2>&1); do \
 		attempt=$$((attempt + 1)); \
 		if [ $$attempt -ge 60 ]; then \
 			echo "WordPress is not ready after 120s"; \
+			echo "$$output"; \
 			exit 1; \
 		fi; \
 		sleep 2; \
