@@ -2,7 +2,7 @@
 
 Document management and signature solution with full control over your data.
 
-## LibreSisn SaaS
+## LibreSign SaaS
 
 Orchestrates LibreSign provisioning with WordPress as client-facing layer for SaaS deployment.
 
