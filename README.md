@@ -8,8 +8,8 @@ Orchestrates LibreSign provisioning with WordPress as client-facing layer for Sa
 
 ## Quick Start
 
-The Nextcloud and WordPress environments are git submodules. Initialize them
-before the first `make up`:
+The Nextcloud, WordPress, and static site environments are git submodules.
+Initialize them before the first `make up`:
 
 ```bash
 git submodule update --init
@@ -23,10 +23,18 @@ make down
 make help  # View all available commands
 ```
 
-`make up` refreshes the remote Docker images used by the WordPress and Nextcloud
-services and rebuilds local buildable services before starting the stack, so
-changes pulled in the submodules are picked up without separate manual pull or
-build steps.
+To keep local development simple and avoid `/etc/hosts` changes, the static site
+is exposed on its own localhost port instead of using the production subdomain
+layout:
+
+- WordPress: <http://localhost>
+- Static site: <http://localhost:8081>
+- Nextcloud: <http://localhost:8082>
+
+`make up` refreshes the remote Docker images used by the WordPress, static site,
+and Nextcloud services and rebuilds local buildable services before starting the
+stack, so changes pulled in the submodules are picked up without separate manual
+pull or build steps.
 
 On a fresh WordPress database, `make up` also performs the initial WordPress
 installation via WP-CLI and restarts the WordPress container once so the
@@ -39,6 +47,7 @@ WordPress is the customer-facing commerce and account portal (plans, subscriptio
 ### Component Roles
 
 - [`Makefile`](./Makefile): orchestrates local development environment (refresh images, start services, perform first WordPress install when needed, connect networks, setup and enable required Nextcloud apps).
+- [`site`](https://github.com/LibreSign/site): Jigsaw-based marketing site served locally on a dedicated port.
 - [`wordpress-docker`](https://github.com/LibreCodeCoop/wordpress-docker): storefront and customer account portal (checkout, subscriptions, invoices, billing).
 - [`woocommerce-nextcloud-admin-group-manager`](https://github.com/LibreSign/woocommerce-nextcloud-admin-group-manager) (WordPress plugin): converts subscription/account events into integration calls.
 - [`nextcloud-development`](https://github.com/LibreCodeCoop/nextcloud-docker-development): local Nextcloud runtime where integration apps are installed/enabled.
@@ -51,10 +60,13 @@ WordPress is the customer-facing commerce and account portal (plans, subscriptio
 sequenceDiagram
     actor Dev as Developer
     participant Make as make up
+    participant Site as site
     participant WP as wordpress-docker
     participant NC as nextcloud-development
 
     Dev->>Make: make up
+    Make->>Site: refresh remote images
+    Make->>Site: start services
     Make->>WP: refresh remote images
     Make->>NC: refresh remote images
     Make->>WP: start services

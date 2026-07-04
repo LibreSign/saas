@@ -1,10 +1,14 @@
-.PHONY: up down
+.PHONY: up down help _help
 
 # Variables
 ROOT_DIR := $(shell pwd)
 NEXTCLOUD_DIR := $(ROOT_DIR)/nextcloud-development
 WORDPRESS_DIR := $(ROOT_DIR)/wordpress-docker
+SITE_DIR := $(ROOT_DIR)/site
+SITE_HTTP_PORT ?= 8081
+SITE_BROWSERSYNC_PORT ?= 3000
 NEXTCLOUD_HTTP_PORT ?= 8082
+SITE_BASE_URL := http://localhost:$(SITE_HTTP_PORT)
 NEXTCLOUD_BASE_URL := http://localhost:$(NEXTCLOUD_HTTP_PORT)
 NEXTCLOUD_APPS_DIR := $(NEXTCLOUD_DIR)/volumes/nextcloud/apps-extra
 LOCAL_UID := $(shell id -u)
@@ -18,16 +22,19 @@ WORDPRESS_ADMIN_EMAIL ?= admin@example.com
 # Docker Compose commands
 NEXTCLOUD_COMPOSE := HTTP_PORT=$(NEXTCLOUD_HTTP_PORT) docker compose -f $(NEXTCLOUD_DIR)/docker-compose.yml
 WORDPRESS_COMPOSE := docker compose -f $(WORDPRESS_DIR)/docker-compose.yml -f $(ROOT_DIR)/docker-compose.override.yml
+SITE_COMPOSE := UID=$(LOCAL_UID) GID=$(LOCAL_GID) HTTP_PORT=$(SITE_HTTP_PORT) HTTP_PORT_BROWSERSYNC=$(SITE_BROWSERSYNC_PORT) URL_SITE=$(SITE_BASE_URL) docker compose -f $(SITE_DIR)/docker-compose.yml
 NEXTCLOUD_OCC := $(NEXTCLOUD_COMPOSE) exec -u www-data nextcloud php occ
 WORDPRESS_CLI := $(WORDPRESS_COMPOSE) exec wordpress wp --allow-root
 
 _help:
 	@echo "LibreSign SaaS - Available commands:"
 	@echo ""
-	@echo "  make up    - Refresh images and start all services (WordPress + Nextcloud)"
+	@echo "  make up    - Refresh images and start all services (WordPress + site + Nextcloud)"
 	@echo "  make down  - Stop all services"
 	@echo ""
 	@echo "Environment variables:"
+	@echo "  SITE_HTTP_PORT                   - Static site port (default: 8081)"
+	@echo "  SITE_BROWSERSYNC_PORT            - Static site HMR port (default: 3000)"
 	@echo "  NEXTCLOUD_HTTP_PORT              - Nextcloud port (default: 8082)"
 	@echo "  NEXTCLOUD_ADMIN_USER             - Nextcloud admin username (default: admin)"
 	@echo "  NEXTCLOUD_ADMIN_PASSWORD         - Nextcloud admin password (default: admin)"
@@ -39,15 +46,26 @@ _help:
 	@echo "  WORDPRESS_LOCAL_RESET_ALL_USERS_PASSWORDS - Reset all passwords on startup (default: 1)"
 	@echo ""
 
-up: _refresh-service-images _start-services _install-wordpress _wait-wordpress _wait-nextcloud _fix-nextcloud-apps-permissions _enable-wordpress-plugin _connect-networks _setup-apps _provision-user
+help: _help
+
+up: _prepare-site-output-dir _refresh-service-images _start-services _install-wordpress _wait-wordpress _wait-nextcloud _fix-nextcloud-apps-permissions _enable-wordpress-plugin _connect-networks _setup-apps _provision-user
 	@echo "Environment up."
 
 down:
+	$(SITE_COMPOSE) down
 	$(NEXTCLOUD_COMPOSE) down
 	$(WORDPRESS_COMPOSE) down
 	@echo "Environment down."
 
+_prepare-site-output-dir:
+	@echo "Preparing site output directory..."
+	@rm -rf $(SITE_DIR)/build_local
+	@mkdir -p $(SITE_DIR)/build_local
+	@chmod 775 $(SITE_DIR)/build_local
+
 _refresh-service-images:
+	@echo "Refreshing site images..."
+	@$(SITE_COMPOSE) pull php web
 	@echo "Refreshing WordPress images..."
 	@$(WORDPRESS_COMPOSE) pull --ignore-buildable wordpress nginx
 	@echo "Rebuilding WordPress buildable services..."
@@ -56,6 +74,8 @@ _refresh-service-images:
 	@$(NEXTCLOUD_COMPOSE) pull mysql redis nextcloud nginx
 
 _start-services:
+	@echo "Starting site services..."
+	@$(SITE_COMPOSE) up -d php web
 	@echo "Starting WordPress services..."
 	@$(WORDPRESS_COMPOSE) up -d mariadb wordpress nginx
 	@echo "Starting Nextcloud services..."
