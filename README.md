@@ -25,22 +25,27 @@ make down
 make help  # View all available commands
 ```
 
-The preferred way to configure the shared footer origin is directly in the
+The preferred way to configure the shared footer behavior is directly in the
 WordPress theme via:
 
 - `Appearance > Customize > Footer integration`
 
-There you can define one or more origins for the footer fragment without
-touching code.
+There you configure the webhook secret and optional allowlist used by WordPress
+to receive the footer artifacts pushed by the static site build.
 
-Environment variables are optional infrastructure-level fallbacks for advanced
-deployments only.
+On the static-site build side, the webhook publisher is configured with runtime
+environment variables.
 
 Priority order is:
 
 1. theme configuration (`Appearance > Customize > Footer integration`)
-2. environment variables, when provided by the hosting/runtime
-3. production fallback `https://libresign.coop`
+2. runtime environment variables for the site build webhook
+3. existing locally stored footer artifact in WordPress
+
+The site build webhook expects:
+
+- `LIBRESIGN_FOOTER_WEBHOOK_URL`
+- `LIBRESIGN_FOOTER_WEBHOOK_SECRET`
 
 You can pass component names after `make up` to start only part of the local
 stack:
