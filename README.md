@@ -25,6 +25,23 @@ make down
 make help  # View all available commands
 ```
 
+The preferred way to configure the shared footer origin is directly in the
+WordPress theme via:
+
+- `Appearance > Customize > Footer integration`
+
+There you can define one or more origins for the footer fragment without
+touching code.
+
+Environment variables are optional infrastructure-level fallbacks for advanced
+deployments only.
+
+Priority order is:
+
+1. theme configuration (`Appearance > Customize > Footer integration`)
+2. environment variables, when provided by the hosting/runtime
+3. production fallback `https://libresign.coop`
+
 You can pass component names after `make up` to start only part of the local
 stack:
 
