@@ -54,6 +54,11 @@ For local development on Linux, the repository `Makefile` loads `.env`,
 maps `host.docker.internal` into the site container, and publishes both
 fragments directly to the local WordPress REST endpoints by default.
 
+Any LibreSign/SaaS-specific WordPress runtime wiring (webhook secrets,
+allowlists, request size overrides for fragment uploads) lives in this
+repository via `docker-compose.override.yml` and local override files, not in
+the upstream `wordpress-docker` repository.
+
 You can pass component names after `make up` to start only part of the local
 stack:
 
