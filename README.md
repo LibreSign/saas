@@ -25,6 +25,28 @@ make down
 make help  # View all available commands
 ```
 
+The preferred way to configure the shared footer behavior is directly in the
+WordPress theme via:
+
+- `Appearance > Customize > Footer integration`
+
+There you configure the webhook secret and optional allowlist used by WordPress
+to receive the footer artifacts pushed by the static site build.
+
+On the static-site build side, the webhook publisher is configured with runtime
+environment variables.
+
+Priority order is:
+
+1. theme configuration (`Appearance > Customize > Footer integration`)
+2. runtime environment variables for the site build webhook
+3. existing locally stored footer artifact in WordPress
+
+The site build webhook expects:
+
+- `LIBRESIGN_FOOTER_WEBHOOK_URL`
+- `LIBRESIGN_FOOTER_WEBHOOK_SECRET`
+
 You can pass component names after `make up` to start only part of the local
 stack:
 
