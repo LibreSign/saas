@@ -25,27 +25,34 @@ make down
 make help  # View all available commands
 ```
 
-The preferred way to configure the shared footer behavior is directly in the
+The preferred way to configure the shared header/footer behavior is directly in the
 WordPress theme via:
 
+- `Appearance > Customize > Header integration`
 - `Appearance > Customize > Footer integration`
 
 There you configure the webhook secret and optional allowlist used by WordPress
-to receive the footer artifacts pushed by the static site build.
+to receive the header/footer artifacts pushed by the static site build.
 
 On the static-site build side, the webhook publisher is configured with runtime
 environment variables.
 
 Priority order is:
 
-1. theme configuration (`Appearance > Customize > Footer integration`)
+1. theme configuration (`Appearance > Customize > Header integration` / `Footer integration`)
 2. runtime environment variables for the site build webhook
-3. existing locally stored footer artifact in WordPress
+3. existing locally stored header/footer artifacts in WordPress
 
-The site build webhook expects:
+The site build webhooks expect:
 
+- `LIBRESIGN_HEADER_WEBHOOK_URL`
+- `LIBRESIGN_HEADER_WEBHOOK_SECRET`
 - `LIBRESIGN_FOOTER_WEBHOOK_URL`
 - `LIBRESIGN_FOOTER_WEBHOOK_SECRET`
+
+For local development on Linux, the repository `Makefile` loads `.env`,
+maps `host.docker.internal` into the site container, and publishes both
+fragments directly to the local WordPress REST endpoints by default.
 
 You can pass component names after `make up` to start only part of the local
 stack:
