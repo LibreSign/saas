@@ -1,4 +1,4 @@
-.PHONY: up down help _help site wordpress nextcloud _up-site _up-wordpress _up-nextcloud _up-integration _ensure-site-repo
+.PHONY: up down help _help site wordpress nextcloud _up-site _up-wordpress _up-nextcloud _down-site _down-wordpress _down-nextcloud _up-integration _ensure-site-repo
 
 -include .env
 export
@@ -52,7 +52,11 @@ _help:
 	@echo "  make up wordpress              - Start only the WordPress stack"
 	@echo "  make up nextcloud              - Start only the Nextcloud stack"
 	@echo "  make up wordpress nextcloud    - Start only the selected stacks"
-	@echo "  make down  - Stop all services"
+	@echo "  make down                      - Stop all services"
+	@echo "  make down wordpress            - Stop only the WordPress stack"
+	@echo "  make down site                 - Stop only the static site stack"
+	@echo "  make down nextcloud            - Stop only the Nextcloud stack"
+	@echo "  make down wordpress nextcloud  - Stop only the selected stacks"
 	@echo ""
 	@echo "Environment variables:"
 	@echo "  SITE_HTTP_PORT                   - Static site port (default: 8081)"
@@ -91,10 +95,19 @@ site wordpress nextcloud:
 	@:
 
 down:
+	@for component in $(UP_COMPONENTS); do \
+		$(MAKE) --no-print-directory _down-$$component; \
+	done
+	@echo "Environment down ($(UP_COMPONENTS))."
+
+_down-site:
 	$(SITE_COMPOSE) down
-	$(NEXTCLOUD_COMPOSE) down
+
+_down-wordpress:
 	$(WORDPRESS_COMPOSE) down
-	@echo "Environment down."
+
+_down-nextcloud:
+	$(NEXTCLOUD_COMPOSE) down
 
 _up-site: _ensure-site-repo _prepare-site-output-dir _refresh-site-images _start-site
 
