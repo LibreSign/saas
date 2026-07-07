@@ -1,5 +1,8 @@
 .PHONY: up down help _help site wordpress nextcloud _up-site _up-wordpress _up-nextcloud _up-integration
 
+-include .env
+export
+
 # Variables
 ROOT_DIR := $(shell pwd)
 NEXTCLOUD_DIR := $(ROOT_DIR)/nextcloud-development
@@ -7,6 +10,7 @@ WORDPRESS_DIR := $(ROOT_DIR)/wordpress-docker
 SITE_DIR := $(ROOT_DIR)/site
 SITE_HTTP_PORT ?= 8081
 SITE_BROWSERSYNC_PORT ?= 3000
+SITE_SERVER_MODE ?= build
 NEXTCLOUD_HTTP_PORT ?= 8082
 SITE_BASE_URL := http://localhost:$(SITE_HTTP_PORT)
 NEXTCLOUD_BASE_URL := http://localhost:$(NEXTCLOUD_HTTP_PORT)
@@ -18,6 +22,15 @@ WORDPRESS_SITE_TITLE ?= LibreSign SaaS
 WORDPRESS_ADMIN_USER ?= admin
 WORDPRESS_ADMIN_PASSWORD ?= admin
 WORDPRESS_ADMIN_EMAIL ?= admin@example.com
+WORDPRESS_WEBHOOK_BASE_URL ?= http://host.docker.internal
+LIBRESIGN_PUBLISH_HEADER_FRAGMENTS ?= true
+LIBRESIGN_HEADER_WEBHOOK_URL ?= $(WORDPRESS_WEBHOOK_BASE_URL)/wp-json/libresign/v1/header-fragment
+LIBRESIGN_HEADER_WEBHOOK_SECRET ?= change-me-header
+LIBRESIGN_HEADER_WEBHOOK_ALLOWED_IPS ?=
+LIBRESIGN_PUBLISH_FOOTER_FRAGMENTS ?= true
+LIBRESIGN_FOOTER_WEBHOOK_URL ?= $(WORDPRESS_WEBHOOK_BASE_URL)/wp-json/libresign/v1/footer-fragment
+LIBRESIGN_FOOTER_WEBHOOK_SECRET ?= change-me-footer
+LIBRESIGN_FOOTER_WEBHOOK_ALLOWED_IPS ?=
 COMPONENT_TARGETS := site wordpress nextcloud
 SELECTED_COMPONENTS := $(filter $(COMPONENT_TARGETS),$(MAKECMDGOALS))
 UP_COMPONENTS := $(if $(SELECTED_COMPONENTS),$(SELECTED_COMPONENTS),$(COMPONENT_TARGETS))
@@ -25,7 +38,7 @@ UP_COMPONENTS := $(if $(SELECTED_COMPONENTS),$(SELECTED_COMPONENTS),$(COMPONENT_
 # Docker Compose commands
 NEXTCLOUD_COMPOSE := HTTP_PORT=$(NEXTCLOUD_HTTP_PORT) docker compose -f $(NEXTCLOUD_DIR)/docker-compose.yml
 WORDPRESS_COMPOSE := docker compose -f $(WORDPRESS_DIR)/docker-compose.yml -f $(ROOT_DIR)/docker-compose.override.yml
-SITE_COMPOSE := UID=$(LOCAL_UID) GID=$(LOCAL_GID) HTTP_PORT=$(SITE_HTTP_PORT) HTTP_PORT_BROWSERSYNC=$(SITE_BROWSERSYNC_PORT) URL_SITE=$(SITE_BASE_URL) docker compose -f $(SITE_DIR)/docker-compose.yml
+SITE_COMPOSE := UID=$(LOCAL_UID) GID=$(LOCAL_GID) HTTP_PORT=$(SITE_HTTP_PORT) HTTP_PORT_BROWSERSYNC=$(SITE_BROWSERSYNC_PORT) SERVER_MODE=$(SITE_SERVER_MODE) URL_SITE=$(SITE_BASE_URL) LIBRESIGN_PUBLISH_HEADER_FRAGMENTS=$(LIBRESIGN_PUBLISH_HEADER_FRAGMENTS) LIBRESIGN_HEADER_WEBHOOK_URL=$(LIBRESIGN_HEADER_WEBHOOK_URL) LIBRESIGN_HEADER_WEBHOOK_SECRET=$(LIBRESIGN_HEADER_WEBHOOK_SECRET) LIBRESIGN_PUBLISH_FOOTER_FRAGMENTS=$(LIBRESIGN_PUBLISH_FOOTER_FRAGMENTS) LIBRESIGN_FOOTER_WEBHOOK_URL=$(LIBRESIGN_FOOTER_WEBHOOK_URL) LIBRESIGN_FOOTER_WEBHOOK_SECRET=$(LIBRESIGN_FOOTER_WEBHOOK_SECRET) docker compose -f $(SITE_DIR)/docker-compose.yml
 NEXTCLOUD_OCC := $(NEXTCLOUD_COMPOSE) exec -u www-data nextcloud php occ
 WORDPRESS_CLI := $(WORDPRESS_COMPOSE) exec wordpress wp --allow-root
 
@@ -42,6 +55,7 @@ _help:
 	@echo "Environment variables:"
 	@echo "  SITE_HTTP_PORT                   - Static site port (default: 8081)"
 	@echo "  SITE_BROWSERSYNC_PORT            - Static site HMR port (default: 3000)"
+	@echo "  SITE_SERVER_MODE                 - Static site container mode for make up (default: build)"
 	@echo "  NEXTCLOUD_HTTP_PORT              - Nextcloud port (default: 8082)"
 	@echo "  NEXTCLOUD_ADMIN_USER             - Nextcloud admin username (default: admin)"
 	@echo "  NEXTCLOUD_ADMIN_PASSWORD         - Nextcloud admin password (default: admin)"
@@ -49,6 +63,13 @@ _help:
 	@echo "  WORDPRESS_ADMIN_USER             - WordPress admin username for first install (default: admin)"
 	@echo "  WORDPRESS_ADMIN_PASSWORD         - WordPress admin password for first install (default: admin)"
 	@echo "  WORDPRESS_ADMIN_EMAIL            - WordPress admin email for first install (default: admin@example.com)"
+	@echo "  WORDPRESS_WEBHOOK_BASE_URL       - Hostname used by the static site container to reach WordPress webhooks (default: http://host.docker.internal)"
+	@echo "  LIBRESIGN_PUBLISH_HEADER_FRAGMENTS - Publish shared header artifacts after site build (default: true)"
+	@echo "  LIBRESIGN_HEADER_WEBHOOK_URL     - Target WordPress header webhook URL"
+	@echo "  LIBRESIGN_HEADER_WEBHOOK_SECRET  - Shared secret for header artifact publishing"
+	@echo "  LIBRESIGN_PUBLISH_FOOTER_FRAGMENTS - Publish shared footer artifacts after site build (default: true)"
+	@echo "  LIBRESIGN_FOOTER_WEBHOOK_URL     - Target WordPress footer webhook URL"
+	@echo "  LIBRESIGN_FOOTER_WEBHOOK_SECRET  - Shared secret for footer artifact publishing"
 	@echo "  WORDPRESS_LOCAL_USERS_PASSWORD   - WordPress users password (default: admin)"
 	@echo "  WORDPRESS_LOCAL_RESET_ALL_USERS_PASSWORDS - Reset all passwords on startup (default: 1)"
 	@echo ""
@@ -104,7 +125,17 @@ _refresh-nextcloud-images:
 
 _start-site:
 	@echo "Starting site services..."
-	@$(SITE_COMPOSE) up -d php web
+	@$(SITE_COMPOSE) up -d --force-recreate php
+	@attempt=0; \
+	until [ -f "$(SITE_DIR)/build_local/index.html" ]; do \
+		attempt=$$((attempt + 1)); \
+		if [ $$attempt -ge 60 ]; then \
+			echo "Static site build did not produce build_local/index.html after 120s"; \
+			exit 1; \
+		fi; \
+		sleep 2; \
+	done
+	@$(SITE_COMPOSE) up -d --force-recreate web
 
 _start-wordpress:
 	@echo "Starting WordPress services..."
