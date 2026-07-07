@@ -8,12 +8,16 @@ Orchestrates LibreSign provisioning with WordPress as client-facing layer for Sa
 
 ## Quick Start
 
-The Nextcloud, WordPress, and static site environments are git submodules.
+The Nextcloud and WordPress environments are git submodules.
 Initialize them before the first `make up`:
 
 ```bash
 git submodule update --init
 ```
+
+The static site (`site/`) is a regular cloned repository managed by
+`make up`. On the first run, the Makefile clones `https://github.com/LibreSign/site.git`
+automatically and checks out `main`.
 
 Then start the stack:
 
@@ -77,8 +81,9 @@ layout:
 
 `make up` refreshes the remote Docker images used by the WordPress, static site,
 and Nextcloud services and rebuilds local buildable services before starting the
-stack, so changes pulled in the submodules are picked up without separate manual
-pull or build steps.
+stack. During `make up site`, the `site/` clone is also synced from
+`https://github.com/LibreSign/site.git` (`main`) automatically, so no manual
+site update step is required.
 
 On a fresh WordPress database, `make up` also performs the initial WordPress
 installation via WP-CLI and restarts the WordPress container once so the

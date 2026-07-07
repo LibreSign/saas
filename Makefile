@@ -1,4 +1,4 @@
-.PHONY: up down help _help site wordpress nextcloud _up-site _up-wordpress _up-nextcloud _up-integration
+.PHONY: up down help _help site wordpress nextcloud _up-site _up-wordpress _up-nextcloud _up-integration _ensure-site-repo
 
 -include .env
 export
@@ -8,6 +8,8 @@ ROOT_DIR := $(shell pwd)
 NEXTCLOUD_DIR := $(ROOT_DIR)/nextcloud-development
 WORDPRESS_DIR := $(ROOT_DIR)/wordpress-docker
 SITE_DIR := $(ROOT_DIR)/site
+SITE_REPO_URL ?= https://github.com/LibreSign/site.git
+SITE_REPO_BRANCH ?= main
 SITE_HTTP_PORT ?= 8081
 SITE_BROWSERSYNC_PORT ?= 3000
 SITE_SERVER_MODE ?= build
@@ -94,13 +96,24 @@ down:
 	$(WORDPRESS_COMPOSE) down
 	@echo "Environment down."
 
-_up-site: _prepare-site-output-dir _refresh-site-images _start-site
+_up-site: _ensure-site-repo _prepare-site-output-dir _refresh-site-images _start-site
 
 _up-wordpress: _refresh-wordpress-images _start-wordpress _install-wordpress _wait-wordpress _enable-wordpress-plugin
 
 _up-nextcloud: _refresh-nextcloud-images _start-nextcloud _wait-nextcloud _fix-nextcloud-apps-permissions
 
 _up-integration: _connect-networks _setup-apps _provision-user
+
+_ensure-site-repo:
+	@echo "Setting up site repository..."
+	@if [ ! -d "$(SITE_DIR)" ] || ! git -C "$(SITE_DIR)" rev-parse --is-inside-work-tree >/dev/null 2>&1; then \
+		rm -rf "$(SITE_DIR)"; \
+		git clone "$(SITE_REPO_URL)" "$(SITE_DIR)"; \
+	fi
+	@git -C "$(SITE_DIR)" remote set-url origin "$(SITE_REPO_URL)"
+	@git -C "$(SITE_DIR)" fetch origin "$(SITE_REPO_BRANCH)"
+	@git -C "$(SITE_DIR)" checkout "$(SITE_REPO_BRANCH)"
+	@git -C "$(SITE_DIR)" pull --ff-only origin "$(SITE_REPO_BRANCH)"
 
 _prepare-site-output-dir:
 	@echo "Preparing site output directory..."
