@@ -4,6 +4,3 @@
 [submodule "wordpress-docker"]
 	path = wordpress-docker
 	url = https://github.com/LibreCodeCoop/wordpress-docker.git
-[submodule "site"]
-	path = site
-	url = https://github.com/LibreSign/site.git
