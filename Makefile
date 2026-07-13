@@ -165,7 +165,7 @@ _start-site:
 
 _start-wordpress:
 	@echo "Starting WordPress services..."
-	@$(WORDPRESS_COMPOSE) up -d mariadb wordpress nginx
+	@$(WORDPRESS_COMPOSE) up -d mariadb wordpress nginx mailpit
 
 _start-nextcloud:
 	@echo "Starting Nextcloud services..."
