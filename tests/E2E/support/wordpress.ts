@@ -29,7 +29,7 @@ export function orderStatus( orderId: number ): string {
 
 export function runTheScheduledNextcloudSyncRetry( orderId: number ): void {
 	wpEval( `
-		if ( ! as_next_scheduled_action( 'agm_retry_nextcloud_sync', array( ${ orderId } ), 'nextcloud-admin-group-manager' ) ) {
+		if ( ! as_next_scheduled_action( 'agm_retry_nextcloud_sync', array( 'order_id' => ${ orderId } ), 'nextcloud-admin-group-manager' ) ) {
 			throw new RuntimeException( 'No Nextcloud sync retry is scheduled for order ${ orderId }' );
 		}
 		do_action( 'agm_retry_nextcloud_sync', ${ orderId } );
