@@ -1,2 +1,5 @@
 # Local clone managed by Makefile (not tracked in this repository)
 /site/
+/node_modules/
+/tests/E2E/.results/
+/tests/E2E/.report/
