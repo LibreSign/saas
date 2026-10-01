@@ -103,6 +103,7 @@ WordPress is the customer-facing commerce and account portal (plans, subscriptio
 - [`admin_group_manager`](https://github.com/LibreSign/admin_group_manager) (Nextcloud app/API): receives integration calls and applies provisioning/access updates.
 - [`wordpress_login_backend`](https://github.com/LibreSign/wordpress_login_backend) (Nextcloud app): allows authentication in Nextcloud using WordPress credentials.
 - [`wordpress-theme`](https://github.com/LibreSign/wordpress-theme) (Wordpress theme): wordpress theme
+- [`woocommerce-subscription`](https://github.com/pronamic/woocommerce-subscriptions) (Woocommerce Subscriptions): Manage subscriptions in Woocommerce
 
 ### Developer Flow
 
