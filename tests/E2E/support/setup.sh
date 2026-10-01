@@ -14,6 +14,9 @@ if ! $wp core is-installed 2>/dev/null; then
 	$compose up -d --wait wordpress
 fi
 
+$wp option update nextcloud_api_login admin
+$wp option update nextcloud_api_password admin
+$wp option update smtp_from noreply@example.com
 $wp theme activate libresign
 $wp plugin deactivate product-open-pricing-name-your-price-for-woocommerce
 $wp wc hpos enable --ignore-plugin-compatibility
