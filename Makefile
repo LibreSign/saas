@@ -16,6 +16,8 @@ SITE_SERVER_MODE ?= build
 NEXTCLOUD_HTTP_PORT ?= 8082
 SITE_BASE_URL := http://localhost:$(SITE_HTTP_PORT)
 NEXTCLOUD_BASE_URL := http://localhost:$(NEXTCLOUD_HTTP_PORT)
+NEXTCLOUD_LOCAL_URL ?= http://host.docker.internal:$(NEXTCLOUD_HTTP_PORT)
+DOCKER_HOST_GATEWAY_IP ?= $(shell docker network inspect bridge -f '{{(index .IPAM.Config 0).Gateway}}' 2>/dev/null)
 NEXTCLOUD_APPS_DIR := $(NEXTCLOUD_DIR)/volumes/nextcloud/apps-extra
 LOCAL_UID := $(shell id -u)
 LOCAL_GID := $(shell id -g)
@@ -38,7 +40,7 @@ SELECTED_COMPONENTS := $(filter $(COMPONENT_TARGETS),$(MAKECMDGOALS))
 UP_COMPONENTS := $(if $(SELECTED_COMPONENTS),$(SELECTED_COMPONENTS),$(COMPONENT_TARGETS))
 
 # Docker Compose commands
-NEXTCLOUD_COMPOSE := IP_BIND=0.0.0.0 HTTP_PORT=$(NEXTCLOUD_HTTP_PORT) docker compose -f $(NEXTCLOUD_DIR)/docker-compose.yml
+NEXTCLOUD_COMPOSE := HTTP_PORT=$(NEXTCLOUD_HTTP_PORT) DOCKER_HOST_GATEWAY_IP=$(DOCKER_HOST_GATEWAY_IP) docker compose -f $(NEXTCLOUD_DIR)/docker-compose.yml -f $(ROOT_DIR)/docker-compose.nextcloud.override.yml
 WORDPRESS_COMPOSE := docker compose -f $(WORDPRESS_DIR)/docker-compose.yml -f $(ROOT_DIR)/docker-compose.override.yml
 SITE_COMPOSE := env UID=$(LOCAL_UID) GID=$(LOCAL_GID) HTTP_PORT=$(SITE_HTTP_PORT) HTTP_PORT_BROWSERSYNC=$(SITE_BROWSERSYNC_PORT) SERVER_MODE=$(SITE_SERVER_MODE) URL_SITE=$(SITE_BASE_URL) LIBRESIGN_PUBLISH_HEADER_FRAGMENTS=$(LIBRESIGN_PUBLISH_HEADER_FRAGMENTS) LIBRESIGN_HEADER_WEBHOOK_URL=$(LIBRESIGN_HEADER_WEBHOOK_URL) LIBRESIGN_HEADER_WEBHOOK_SECRET=$(LIBRESIGN_HEADER_WEBHOOK_SECRET) LIBRESIGN_PUBLISH_FOOTER_FRAGMENTS=$(LIBRESIGN_PUBLISH_FOOTER_FRAGMENTS) LIBRESIGN_FOOTER_WEBHOOK_URL=$(LIBRESIGN_FOOTER_WEBHOOK_URL) LIBRESIGN_FOOTER_WEBHOOK_SECRET=$(LIBRESIGN_FOOTER_WEBHOOK_SECRET) docker compose -f $(SITE_DIR)/docker-compose.yml
 NEXTCLOUD_OCC := $(NEXTCLOUD_COMPOSE) exec -u www-data nextcloud php occ
@@ -268,7 +270,11 @@ _set-wordpress-dsn:
 	@$(NEXTCLOUD_OCC) config:system:set wordpress_dsn --value "mysql:host=mariadb;port=3306;dbname=wordpress;user=root;password=root" >/dev/null
 
 _set-trusted-domains:
-	@$(NEXTCLOUD_OCC) config:system:set trusted_domains 1 --value host.docker.internal >/dev/null
+	@host=$$(echo "$(NEXTCLOUD_LOCAL_URL)" | sed -E 's#^[a-z]+://##; s#[:/].*##'); \
+	index=$$($(NEXTCLOUD_COMPOSE) exec -T -u www-data -e HOST="$$host" nextcloud php -r 'require "config/config.php"; $$domains = $$CONFIG["trusted_domains"] ?? []; echo in_array(getenv("HOST"), $$domains, true) ? "" : ($$domains ? max(array_keys($$domains)) + 1 : 0);'); \
+	if [ -n "$$index" ]; then \
+		$(NEXTCLOUD_OCC) config:system:set trusted_domains $$index --value "$$host" >/dev/null; \
+	fi
 
 _connect-networks:
 	@echo "Connecting Docker networks..."

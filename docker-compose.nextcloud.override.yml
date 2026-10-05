@@ -1,0 +1,6 @@
+services:
+  nginx:
+    ports:
+      - target: 80
+        published: "${HTTP_PORT:-80-99}"
+        host_ip: ${DOCKER_HOST_GATEWAY_IP:?DOCKER_HOST_GATEWAY_IP is required}
