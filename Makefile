@@ -38,9 +38,9 @@ SELECTED_COMPONENTS := $(filter $(COMPONENT_TARGETS),$(MAKECMDGOALS))
 UP_COMPONENTS := $(if $(SELECTED_COMPONENTS),$(SELECTED_COMPONENTS),$(COMPONENT_TARGETS))
 
 # Docker Compose commands
-NEXTCLOUD_COMPOSE := HTTP_PORT=$(NEXTCLOUD_HTTP_PORT) docker compose -f $(NEXTCLOUD_DIR)/docker-compose.yml
+NEXTCLOUD_COMPOSE := IP_BIND=0.0.0.0 HTTP_PORT=$(NEXTCLOUD_HTTP_PORT) docker compose -f $(NEXTCLOUD_DIR)/docker-compose.yml
 WORDPRESS_COMPOSE := docker compose -f $(WORDPRESS_DIR)/docker-compose.yml -f $(ROOT_DIR)/docker-compose.override.yml
-SITE_COMPOSE := UID=$(LOCAL_UID) GID=$(LOCAL_GID) HTTP_PORT=$(SITE_HTTP_PORT) HTTP_PORT_BROWSERSYNC=$(SITE_BROWSERSYNC_PORT) SERVER_MODE=$(SITE_SERVER_MODE) URL_SITE=$(SITE_BASE_URL) LIBRESIGN_PUBLISH_HEADER_FRAGMENTS=$(LIBRESIGN_PUBLISH_HEADER_FRAGMENTS) LIBRESIGN_HEADER_WEBHOOK_URL=$(LIBRESIGN_HEADER_WEBHOOK_URL) LIBRESIGN_HEADER_WEBHOOK_SECRET=$(LIBRESIGN_HEADER_WEBHOOK_SECRET) LIBRESIGN_PUBLISH_FOOTER_FRAGMENTS=$(LIBRESIGN_PUBLISH_FOOTER_FRAGMENTS) LIBRESIGN_FOOTER_WEBHOOK_URL=$(LIBRESIGN_FOOTER_WEBHOOK_URL) LIBRESIGN_FOOTER_WEBHOOK_SECRET=$(LIBRESIGN_FOOTER_WEBHOOK_SECRET) docker compose -f $(SITE_DIR)/docker-compose.yml
+SITE_COMPOSE := env UID=$(LOCAL_UID) GID=$(LOCAL_GID) HTTP_PORT=$(SITE_HTTP_PORT) HTTP_PORT_BROWSERSYNC=$(SITE_BROWSERSYNC_PORT) SERVER_MODE=$(SITE_SERVER_MODE) URL_SITE=$(SITE_BASE_URL) LIBRESIGN_PUBLISH_HEADER_FRAGMENTS=$(LIBRESIGN_PUBLISH_HEADER_FRAGMENTS) LIBRESIGN_HEADER_WEBHOOK_URL=$(LIBRESIGN_HEADER_WEBHOOK_URL) LIBRESIGN_HEADER_WEBHOOK_SECRET=$(LIBRESIGN_HEADER_WEBHOOK_SECRET) LIBRESIGN_PUBLISH_FOOTER_FRAGMENTS=$(LIBRESIGN_PUBLISH_FOOTER_FRAGMENTS) LIBRESIGN_FOOTER_WEBHOOK_URL=$(LIBRESIGN_FOOTER_WEBHOOK_URL) LIBRESIGN_FOOTER_WEBHOOK_SECRET=$(LIBRESIGN_FOOTER_WEBHOOK_SECRET) docker compose -f $(SITE_DIR)/docker-compose.yml
 NEXTCLOUD_OCC := $(NEXTCLOUD_COMPOSE) exec -u www-data nextcloud php occ
 WORDPRESS_CLI := $(WORDPRESS_COMPOSE) exec wordpress wp --allow-root
 
@@ -147,7 +147,7 @@ _refresh-wordpress-images:
 
 _refresh-nextcloud-images:
 	@echo "Refreshing Nextcloud images..."
-	@$(NEXTCLOUD_COMPOSE) pull mysql redis nextcloud nginx
+	@$(NEXTCLOUD_COMPOSE) pull database redis nextcloud nginx
 
 _start-site:
 	@echo "Starting site services..."
@@ -169,7 +169,7 @@ _start-wordpress:
 
 _start-nextcloud:
 	@echo "Starting Nextcloud services..."
-	@$(NEXTCLOUD_COMPOSE) up -d mysql redis nextcloud nginx
+	@$(NEXTCLOUD_COMPOSE) up -d database redis nextcloud nginx
 
 _install-wordpress:
 	@echo "Ensuring WordPress core is installed..."
@@ -238,7 +238,7 @@ _enable-wordpress-plugin:
 	@echo "Enabling WordPress plugin..."
 	@$(WORDPRESS_CLI) plugin activate woocommerce-nextcloud-admin-group-manager >/dev/null || true
 
-_setup-apps: _ensure-wordpress-app _ensure-nextcloud-app _enable-apps _set-wordpress-dsn
+_setup-apps: _ensure-wordpress-app _ensure-nextcloud-app _enable-apps _set-wordpress-dsn _set-trusted-domains
 
 _ensure-wordpress-app:
 	@echo "Setting up wordpress_login_backend app..."
@@ -266,6 +266,9 @@ _enable-apps:
 
 _set-wordpress-dsn:
 	@$(NEXTCLOUD_OCC) config:system:set wordpress_dsn --value "mysql:host=mariadb;port=3306;dbname=wordpress;user=root;password=root" >/dev/null
+
+_set-trusted-domains:
+	@$(NEXTCLOUD_OCC) config:system:set trusted_domains 1 --value host.docker.internal >/dev/null
 
 _connect-networks:
 	@echo "Connecting Docker networks..."
