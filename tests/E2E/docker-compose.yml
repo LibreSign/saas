@@ -1,0 +1,86 @@
+name: saas-e2e
+
+services:
+  mariadb:
+    image: mariadb:12
+    environment:
+      MARIADB_ROOT_PASSWORD: root
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 2s
+      retries: 30
+    volumes:
+      - ./support/mariadb-init.sql:/docker-entrypoint-initdb.d/mariadb-init.sql:ro
+
+  mailpit:
+    image: axllent/mailpit:v1.31.2
+    ports:
+      - "8893:8025"
+
+  wordpress:
+    extends:
+      file: ../../docker-compose.override.yml
+      service: wordpress
+    image: ghcr.io/librecodecoop/wordpress-docker:latest
+    depends_on:
+      mariadb:
+        condition: service_healthy
+    environment:
+      WORDPRESS_DB_HOST: mariadb
+      WORDPRESS_DB_NAME: wordpress
+      WORDPRESS_DB_USER: root
+      WORDPRESS_DB_PASSWORD: root
+      WORDPRESS_TABLE_PREFIX: wp_
+      PROD_SITE_URL: ""
+      LOCAL_SITE_URL: http://localhost:8891
+      NEXTCLOUD_LOCAL_URL: http://nextcloud
+      WORDPRESS_LOCAL_USERS_PASSWORD: ""
+      WORDPRESS_LOCAL_RESET_ALL_USERS_PASSWORDS: "0"
+      HOST_UID: "33"
+      HOST_GID: "33"
+    healthcheck:
+      test: ["CMD", "pidof", "php-fpm"]
+      interval: 2s
+      retries: 300
+    volumes:
+      - wordpress:/var/www/html
+      - ./support:/e2e:ro
+
+  nginx:
+    image: nginx
+    depends_on:
+      - wordpress
+    ports:
+      - "8891:80"
+    volumes:
+      - wordpress:/var/www/html:ro
+      - ../../.docker/wordpress-nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+
+  nextcloud:
+    image: nextcloud:35-apache
+    depends_on:
+      mariadb:
+        condition: service_healthy
+    environment:
+      MYSQL_HOST: mariadb
+      MYSQL_DATABASE: nextcloud
+      MYSQL_USER: nextcloud
+      MYSQL_PASSWORD: nextcloud
+      NEXTCLOUD_ADMIN_USER: admin
+      NEXTCLOUD_ADMIN_PASSWORD: admin
+      NEXTCLOUD_TRUSTED_DOMAINS: localhost nextcloud
+      SMTP_HOST: mailpit
+      SMTP_PORT: "1025"
+      MAIL_FROM_ADDRESS: nextcloud
+      MAIL_DOMAIN: example.com
+    ports:
+      - "8892:80"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fs http://localhost/status.php | grep -q '\"installed\":true'"]
+      interval: 2s
+      retries: 300
+    volumes:
+      - ./support/nextcloud-setup.sh:/docker-entrypoint-hooks.d/post-installation/nextcloud-setup.sh:ro
+
+volumes:
+  wordpress:
