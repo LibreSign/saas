@@ -43,7 +43,12 @@ async function fillTheBillingDetails( page: Page, customer: Customer ): Promise<
 	await page.getByLabel( 'CPF or CNPJ' ).fill( '111.444.777-35' );
 }
 
+export async function agreeToTheTerms( page: Page ): Promise< void > {
+	await page.getByRole( 'checkbox', { name: /^I agree to the terms and privacy policy/ } ).check();
+}
+
 export async function placeTheOrder( page: Page ): Promise< number > {
+	await agreeToTheTerms( page );
 	await page.getByRole( 'button', { name: 'Sign up now' } ).click();
 	await expect( page ).toHaveURL( /\/checkout\/order-received\/\d+\//, { timeout: 90_000 } );
 	return Number( page.url().match( /order-received\/(\d+)\// )![ 1 ] );

@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 
 import { nextcloud } from './support/nextcloud';
-import { aSubscriber, chooseThePlan, logInToTheStore, placeTheOrder, STORE_URL } from './support/store';
+import { agreeToTheTerms, aSubscriber, chooseThePlan, logInToTheStore, placeTheOrder, STORE_URL } from './support/store';
 import { runScheduledSubscriptionAction, subscriptionStatus } from './support/wordpress';
 
 test.describe( 'Keeping the plan over time', () => {
@@ -16,6 +16,7 @@ test.describe( 'Keeping the plan over time', () => {
 		await logInToTheStore( page, customer.email, customer.password );
 		await page.goto( `/account/view-subscription/${ subscriptionId }/` );
 		await page.getByRole( 'link', { name: 'Pay', exact: true } ).click();
+		await agreeToTheTerms( page );
 		await page.getByRole( 'button', { name: 'Renew subscription' } ).click();
 		await expect( page ).toHaveURL( /\/checkout\/order-received\/\d+\//, { timeout: 90_000 } );
 

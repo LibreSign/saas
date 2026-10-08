@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 
 import { nextcloud } from './support/nextcloud';
-import { aSubscriber, logInToTheStore, placeTheOrder, plansInTheStore, STORE_URL } from './support/store';
+import { agreeToTheTerms, aSubscriber, logInToTheStore, placeTheOrder, plansInTheStore, STORE_URL } from './support/store';
 import { subscriptionStatus } from './support/wordpress';
 
 const GIGABYTE = 1024 ** 3;
@@ -33,6 +33,7 @@ test.describe( 'Changing plan', () => {
 		await page.locator( '.cfvsw-swatches-option', { hasText: 'Monthly' } ).click();
 		await page.getByRole( 'button', { name: 'Switch subscription' } ).click();
 		await page.goto( `${ STORE_URL }/checkout/` );
+		await agreeToTheTerms( page );
 		await page.getByRole( 'button', { name: 'Switch subscription' } ).click();
 		await expect( page ).toHaveURL( /\/checkout\/order-received\/\d+\//, { timeout: 90_000 } );
 
