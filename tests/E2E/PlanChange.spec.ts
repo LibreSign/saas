@@ -23,7 +23,7 @@ test.describe( 'Changing plan', () => {
 		await expect( page.getByRole( 'link', { name: 'Professional', exact: true } ) ).toHaveCount( 0 );
 	} );
 
-	test.fail( 'upgrading from Basic to Enterprise raises the workspace storage to 800 GB', { annotation: { type: 'issue', description: 'https://github.com/LibreSign/woocommerce-nextcloud-admin-group-manager/issues/33' } }, async ( { browser, page } ) => {
+	test( 'upgrading from Basic to Enterprise raises the workspace storage to 800 GB', async ( { browser, page } ) => {
 		const { customer, subscriptionId } = await aSubscriber( page, 'Nilo' );
 		await logInToTheStore( page, customer.email, customer.password );
 

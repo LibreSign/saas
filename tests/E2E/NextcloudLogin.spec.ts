@@ -19,7 +19,7 @@ test.describe( 'Logging into Nextcloud with the store account', () => {
 		await nextcloud.expectWrongLoginOrPassword( browser, customer.email, 'not-the-password' );
 	} );
 
-	test.fail( 'a password changed in the account details replaces the old one', { annotation: { type: 'issue', description: 'https://github.com/LibreSign/wordpress_login_backend/issues/22' } }, async ( { browser, page } ) => {
+	test( 'a password changed in the account details replaces the old one', async ( { browser, page } ) => {
 		const { customer } = await aSubscriber( page, 'Gustavo' );
 		const newPassword = `${ customer.password }-changed`;
 
