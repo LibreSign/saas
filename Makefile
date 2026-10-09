@@ -1,4 +1,4 @@
-.PHONY: up down help _help site wordpress nextcloud _up-site _up-wordpress _up-nextcloud _down-site _down-wordpress _down-nextcloud _up-integration _ensure-site-repo
+.PHONY: up down test test-config test-integration help _help site wordpress nextcloud _up-site _up-wordpress _up-nextcloud _down-site _down-wordpress _down-nextcloud _up-integration _ensure-site-repo
 
 -include .env
 export
@@ -13,18 +13,18 @@ SITE_REPO_BRANCH ?= main
 SITE_HTTP_PORT ?= 8081
 SITE_BROWSERSYNC_PORT ?= 3000
 SITE_SERVER_MODE ?= build
-NEXTCLOUD_HTTP_PORT ?= 8082
 SITE_BASE_URL := http://localhost:$(SITE_HTTP_PORT)
-NEXTCLOUD_BASE_URL := http://localhost:$(NEXTCLOUD_HTTP_PORT)
 NEXTCLOUD_APPS_DIR := $(NEXTCLOUD_DIR)/volumes/nextcloud/apps-extra
 LOCAL_UID := $(shell id -u)
 LOCAL_GID := $(shell id -g)
-WORDPRESS_SITE_URL ?= http://localhost
+WORDPRESS_HTTP_PORT ?= 8080
+WORDPRESS_LEGACY_SITE_URL := http://localhost
+WORDPRESS_SITE_URL ?= http://127.0.0.1:$(WORDPRESS_HTTP_PORT)
 WORDPRESS_SITE_TITLE ?= LibreSign SaaS
 WORDPRESS_ADMIN_USER ?= admin
 WORDPRESS_ADMIN_PASSWORD ?= admin
 WORDPRESS_ADMIN_EMAIL ?= admin@example.com
-WORDPRESS_WEBHOOK_BASE_URL ?= http://host.docker.internal
+WORDPRESS_WEBHOOK_BASE_URL ?= http://host.docker.internal:$(WORDPRESS_HTTP_PORT)
 LIBRESIGN_PUBLISH_HEADER_FRAGMENTS ?= true
 LIBRESIGN_HEADER_WEBHOOK_URL ?= $(WORDPRESS_WEBHOOK_BASE_URL)/wp-json/libresign/v1/header-fragment
 LIBRESIGN_HEADER_WEBHOOK_SECRET ?= change-me-header
@@ -38,11 +38,15 @@ SELECTED_COMPONENTS := $(filter $(COMPONENT_TARGETS),$(MAKECMDGOALS))
 UP_COMPONENTS := $(if $(SELECTED_COMPONENTS),$(SELECTED_COMPONENTS),$(COMPONENT_TARGETS))
 
 # Docker Compose commands
-NEXTCLOUD_COMPOSE := HTTP_PORT=$(NEXTCLOUD_HTTP_PORT) docker compose -f $(NEXTCLOUD_DIR)/docker-compose.yml
+NEXTCLOUD_COMPOSE := docker compose -f $(NEXTCLOUD_DIR)/docker-compose.yml
 WORDPRESS_COMPOSE := docker compose -f $(WORDPRESS_DIR)/docker-compose.yml -f $(ROOT_DIR)/docker-compose.override.yml
-SITE_COMPOSE := UID=$(LOCAL_UID) GID=$(LOCAL_GID) HTTP_PORT=$(SITE_HTTP_PORT) HTTP_PORT_BROWSERSYNC=$(SITE_BROWSERSYNC_PORT) SERVER_MODE=$(SITE_SERVER_MODE) URL_SITE=$(SITE_BASE_URL) LIBRESIGN_PUBLISH_HEADER_FRAGMENTS=$(LIBRESIGN_PUBLISH_HEADER_FRAGMENTS) LIBRESIGN_HEADER_WEBHOOK_URL=$(LIBRESIGN_HEADER_WEBHOOK_URL) LIBRESIGN_HEADER_WEBHOOK_SECRET=$(LIBRESIGN_HEADER_WEBHOOK_SECRET) LIBRESIGN_PUBLISH_FOOTER_FRAGMENTS=$(LIBRESIGN_PUBLISH_FOOTER_FRAGMENTS) LIBRESIGN_FOOTER_WEBHOOK_URL=$(LIBRESIGN_FOOTER_WEBHOOK_URL) LIBRESIGN_FOOTER_WEBHOOK_SECRET=$(LIBRESIGN_FOOTER_WEBHOOK_SECRET) docker compose -f $(SITE_DIR)/docker-compose.yml
+SITE_COMPOSE := env UID=$(LOCAL_UID) GID=$(LOCAL_GID) HTTP_PORT=$(SITE_HTTP_PORT) HTTP_PORT_BROWSERSYNC=$(SITE_BROWSERSYNC_PORT) SERVER_MODE=$(SITE_SERVER_MODE) URL_SITE=$(SITE_BASE_URL) LIBRESIGN_PUBLISH_HEADER_FRAGMENTS=$(LIBRESIGN_PUBLISH_HEADER_FRAGMENTS) LIBRESIGN_HEADER_WEBHOOK_URL=$(LIBRESIGN_HEADER_WEBHOOK_URL) LIBRESIGN_HEADER_WEBHOOK_SECRET=$(LIBRESIGN_HEADER_WEBHOOK_SECRET) LIBRESIGN_PUBLISH_FOOTER_FRAGMENTS=$(LIBRESIGN_PUBLISH_FOOTER_FRAGMENTS) LIBRESIGN_FOOTER_WEBHOOK_URL=$(LIBRESIGN_FOOTER_WEBHOOK_URL) LIBRESIGN_FOOTER_WEBHOOK_SECRET=$(LIBRESIGN_FOOTER_WEBHOOK_SECRET) docker compose -f $(SITE_DIR)/docker-compose.yml
 NEXTCLOUD_OCC := $(NEXTCLOUD_COMPOSE) exec -u www-data nextcloud php occ
 WORDPRESS_CLI := $(WORDPRESS_COMPOSE) exec wordpress wp --allow-root
+WORDPRESS_CLI_STDIN := $(WORDPRESS_COMPOSE) exec -T wordpress wp --allow-root
+NEXTCLOUD_NETWORK = $$($(NEXTCLOUD_COMPOSE) config | sed -n 's/^name: //p')_default
+WORDPRESS_NETWORK = $$($(WORDPRESS_COMPOSE) config | sed -n 's/^name: //p')_default
+NCDD_PROXY_FILTER := label=coop.librecode.dev-proxy=true
 
 _help:
 	@echo "LibreSign SaaS - Available commands:"
@@ -57,19 +61,23 @@ _help:
 	@echo "  make down site                 - Stop only the static site stack"
 	@echo "  make down nextcloud            - Stop only the Nextcloud stack"
 	@echo "  make down wordpress nextcloud  - Stop only the selected stacks"
+	@echo "  make test                      - Validate the Compose files and the running integration"
+	@echo "  make test-config               - Validate the Compose files only"
 	@echo ""
 	@echo "Environment variables:"
 	@echo "  SITE_HTTP_PORT                   - Static site port (default: 8081)"
 	@echo "  SITE_BROWSERSYNC_PORT            - Static site HMR port (default: 3000)"
 	@echo "  SITE_SERVER_MODE                 - Static site container mode for make up (default: build)"
-	@echo "  NEXTCLOUD_HTTP_PORT              - Nextcloud port (default: 8082)"
+	@echo "  WORDPRESS_HTTP_PORT              - WordPress port (default: 8080)"
+	@echo "  NEXTCLOUD_HOST                   - Nextcloud hostname behind the shared proxy (default: nextcloud-development.localhost)"
+	@echo "  NEXTCLOUD_PROTOCOL               - Nextcloud protocol behind the shared proxy (default: https)"
 	@echo "  NEXTCLOUD_ADMIN_USER             - Nextcloud admin username (default: admin)"
 	@echo "  NEXTCLOUD_ADMIN_PASSWORD         - Nextcloud admin password (default: admin)"
-	@echo "  WORDPRESS_SITE_URL               - WordPress site URL for first install (default: http://localhost)"
+	@echo "  WORDPRESS_SITE_URL               - WordPress site URL for first install (default: http://127.0.0.1:8080)"
 	@echo "  WORDPRESS_ADMIN_USER             - WordPress admin username for first install (default: admin)"
 	@echo "  WORDPRESS_ADMIN_PASSWORD         - WordPress admin password for first install (default: admin)"
 	@echo "  WORDPRESS_ADMIN_EMAIL            - WordPress admin email for first install (default: admin@example.com)"
-	@echo "  WORDPRESS_WEBHOOK_BASE_URL       - Hostname used by the static site container to reach WordPress webhooks (default: http://host.docker.internal)"
+	@echo "  WORDPRESS_WEBHOOK_BASE_URL       - Hostname used by the static site container to reach WordPress webhooks (default: http://host.docker.internal:8080)"
 	@echo "  LIBRESIGN_PUBLISH_HEADER_FRAGMENTS - Publish shared header artifacts after site build (default: true)"
 	@echo "  LIBRESIGN_HEADER_WEBHOOK_URL     - Target WordPress header webhook URL"
 	@echo "  LIBRESIGN_HEADER_WEBHOOK_SECRET  - Shared secret for header artifact publishing"
@@ -84,34 +92,44 @@ help: _help
 
 up:
 	@for component in $(UP_COMPONENTS); do \
-		$(MAKE) --no-print-directory _up-$$component; \
+		$(MAKE) --no-print-directory _up-$$component || exit 1; \
 	done
 	@if [ -n "$(filter wordpress,$(UP_COMPONENTS))" ] && [ -n "$(filter nextcloud,$(UP_COMPONENTS))" ]; then \
-		$(MAKE) --no-print-directory _up-integration; \
+		$(MAKE) --no-print-directory _up-integration || exit 1; \
 	fi
 	@echo "Environment up ($(UP_COMPONENTS))."
 
 site wordpress nextcloud:
 	@:
 
+test: test-config test-integration
+
+test-config:
+	@echo "Validating Compose configuration..."
+	@$(NEXTCLOUD_COMPOSE) config --quiet
+	@$(WORDPRESS_COMPOSE) config --quiet
+
+test-integration:
+	@sh $(ROOT_DIR)/tests/integration.sh
+
 down:
 	@for component in $(UP_COMPONENTS); do \
-		$(MAKE) --no-print-directory _down-$$component; \
+		$(MAKE) --no-print-directory _down-$$component || exit 1; \
 	done
 	@echo "Environment down ($(UP_COMPONENTS))."
 
 _down-site:
 	$(SITE_COMPOSE) down
 
-_down-wordpress:
+_down-wordpress: _disconnect-networks
 	$(WORDPRESS_COMPOSE) down
 
-_down-nextcloud:
+_down-nextcloud: _disconnect-networks
 	$(NEXTCLOUD_COMPOSE) down
 
 _up-site: _ensure-site-repo _prepare-site-output-dir _refresh-site-images _start-site
 
-_up-wordpress: _refresh-wordpress-images _start-wordpress _install-wordpress _wait-wordpress _enable-wordpress-plugin
+_up-wordpress: _refresh-wordpress-images _start-wordpress _install-wordpress _wait-wordpress _migrate-wordpress-url _enable-wordpress-plugin
 
 _up-nextcloud: _refresh-nextcloud-images _start-nextcloud _wait-nextcloud _fix-nextcloud-apps-permissions
 
@@ -147,7 +165,7 @@ _refresh-wordpress-images:
 
 _refresh-nextcloud-images:
 	@echo "Refreshing Nextcloud images..."
-	@$(NEXTCLOUD_COMPOSE) pull mysql redis nextcloud nginx
+	@$(NEXTCLOUD_COMPOSE) pull --ignore-buildable
 
 _start-site:
 	@echo "Starting site services..."
@@ -165,11 +183,12 @@ _start-site:
 
 _start-wordpress:
 	@echo "Starting WordPress services..."
+	@docker volume create librecode-dev-proxy-certs >/dev/null
 	@$(WORDPRESS_COMPOSE) up -d mariadb wordpress nginx mailpit
 
 _start-nextcloud:
 	@echo "Starting Nextcloud services..."
-	@$(NEXTCLOUD_COMPOSE) up -d mysql redis nextcloud nginx
+	@$(NEXTCLOUD_COMPOSE) up -d
 
 _install-wordpress:
 	@echo "Ensuring WordPress core is installed..."
@@ -208,11 +227,12 @@ _install-wordpress:
 _wait-wordpress:
 	@echo "Waiting for WordPress to be ready..."
 	@attempt=0; \
-	until output=$$($(WORDPRESS_CLI) option get siteurl 2>&1); do \
+	until output=$$($(WORDPRESS_CLI) option get siteurl 2>&1) && $(WORDPRESS_COMPOSE) exec -T wordpress grep -qx php-fpm /proc/1/comm; do \
 		attempt=$$((attempt + 1)); \
-		if [ $$attempt -ge 60 ]; then \
-			echo "WordPress is not ready after 120s"; \
+		if [ $$attempt -ge 300 ]; then \
+			echo "WordPress did not finish installing plugins and themes after 600s"; \
 			echo "$$output"; \
+			$(WORDPRESS_COMPOSE) logs --tail 50 wordpress; \
 			exit 1; \
 		fi; \
 		sleep 2; \
@@ -221,10 +241,11 @@ _wait-wordpress:
 _wait-nextcloud:
 	@echo "Waiting for Nextcloud to be ready..."
 	@attempt=0; \
-	until $(NEXTCLOUD_COMPOSE) exec -T nextcloud pgrep php-fpm >/dev/null 2>&1; do \
+	until $(NEXTCLOUD_OCC) status 2>/dev/null | grep -q 'installed: true' && $(NEXTCLOUD_COMPOSE) exec -T nextcloud pgrep php-fpm >/dev/null 2>&1; do \
 		attempt=$$((attempt + 1)); \
-		if [ $$attempt -ge 120 ]; then \
-			echo "Nextcloud is not ready for app operations after 240s"; \
+		if [ $$attempt -ge 120 ] || ! $(NEXTCLOUD_COMPOSE) ps --status running --services | grep -qx nextcloud; then \
+			echo "Nextcloud is not ready for app operations"; \
+			$(NEXTCLOUD_COMPOSE) logs --tail 50 nextcloud; \
 			exit 1; \
 		fi; \
 		sleep 2; \
@@ -234,11 +255,19 @@ _fix-nextcloud-apps-permissions:
 	@echo "Fixing Nextcloud apps-extra permissions..."
 	@$(NEXTCLOUD_COMPOSE) exec -u root nextcloud sh -lc 'mkdir -p /var/www/html/apps-extra && chown -R $(LOCAL_UID):$(LOCAL_GID) /var/www/html/apps-extra' >/dev/null
 
+_migrate-wordpress-url:
+	@for option in home siteurl; do \
+		if [ "$$($(WORDPRESS_CLI_STDIN) option get $$option)" = "$(WORDPRESS_LEGACY_SITE_URL)" ]; then \
+			echo "Moving WordPress $$option from $(WORDPRESS_LEGACY_SITE_URL) to $(WORDPRESS_SITE_URL)..."; \
+			$(WORDPRESS_CLI_STDIN) option update $$option "$(WORDPRESS_SITE_URL)" >/dev/null || exit 1; \
+		fi; \
+	done
+
 _enable-wordpress-plugin:
 	@echo "Enabling WordPress plugin..."
-	@$(WORDPRESS_CLI) plugin activate woocommerce-nextcloud-admin-group-manager >/dev/null || true
+	@$(WORDPRESS_CLI) plugin activate woocommerce-nextcloud-admin-group-manager
 
-_setup-apps: _ensure-wordpress-app _ensure-nextcloud-app _enable-apps _set-wordpress-dsn
+_setup-apps: _ensure-wordpress-app _ensure-nextcloud-app _enable-apps _set-wordpress-dsn _set-nextcloud-api-host
 
 _ensure-wordpress-app:
 	@echo "Setting up wordpress_login_backend app..."
@@ -260,25 +289,45 @@ _ensure-nextcloud-app:
 
 _enable-apps:
 	@echo "Enabling apps..."
-	@$(NEXTCLOUD_OCC) app:enable wordpress_login_backend >/dev/null || true
-	@$(NEXTCLOUD_OCC) app:enable admin_group_manager --force >/dev/null || true
-	@$(NEXTCLOUD_OCC) app:enable groupquota --force >/dev/null || true
+	@$(NEXTCLOUD_OCC) app:enable wordpress_login_backend --force
+	@$(NEXTCLOUD_OCC) app:enable admin_group_manager --force
+	@$(NEXTCLOUD_OCC) app:enable groupquota --force
 
 _set-wordpress-dsn:
-	@$(NEXTCLOUD_OCC) config:system:set wordpress_dsn --value "mysql:host=mariadb;port=3306;dbname=wordpress;user=root;password=root" >/dev/null
+	@$(NEXTCLOUD_OCC) config:system:set wordpress_dsn --value "mysql:host=wordpress-mariadb;port=3306;dbname=wordpress;user=root;password=root" >/dev/null
+
+_set-nextcloud-api-host:
+	@nextcloud_url=$$($(NEXTCLOUD_COMPOSE) exec -T nextcloud sh -c 'printf "%s://%s" "$${NEXTCLOUD_PROTOCOL:?}" "$${NEXTCLOUD_HOST:?}"') && \
+	$(WORDPRESS_CLI) option update nextcloud_api_host "$$nextcloud_url" >/dev/null
 
 _connect-networks:
-	@echo "Connecting Docker networks..."
-	@NEXTCLOUD_CONTAINER=$$($(NEXTCLOUD_COMPOSE) ps -q nextcloud); \
-	WORDPRESS_CONTAINER=$$($(WORDPRESS_COMPOSE) ps -q mariadb); \
-	WORDPRESS_NETWORK=$$(docker inspect -f '{{range $$k,$$v := .NetworkSettings.Networks}}{{println $$k}}{{end}}' $$WORDPRESS_CONTAINER | head -n1); \
-	docker network connect $$WORDPRESS_NETWORK $$NEXTCLOUD_CONTAINER 2>/dev/null || true
+	@echo "Connecting the Nextcloud proxy and the WordPress database..."
+	@nextcloud_host=$$($(NEXTCLOUD_COMPOSE) exec -T nextcloud sh -c 'printf "%s" "$${NEXTCLOUD_HOST:?}"') || exit 1; \
+	proxy=$$(docker ps -q --filter $(NCDD_PROXY_FILTER)); \
+	mariadb=$$($(WORDPRESS_COMPOSE) ps -q mariadb); \
+	if [ -z "$$proxy" ] || [ -z "$$mariadb" ]; then \
+		echo "The NCDD shared proxy and the WordPress database must be running."; \
+		exit 1; \
+	fi; \
+	connect() { \
+		docker inspect -f '{{json .NetworkSettings.Networks}}' "$$3" | grep -q "\"$$1\"" || docker network connect --alias "$$2" "$$1" "$$3"; \
+	}; \
+	connect "$(WORDPRESS_NETWORK)" "$$nextcloud_host" "$$proxy" && \
+	connect "$(NEXTCLOUD_NETWORK)" wordpress-mariadb "$$mariadb"
+
+_disconnect-networks:
+	@disconnect() { \
+		if docker inspect -f '{{json .NetworkSettings.Networks}}' "$$2" | grep -q "\"$$1\""; then \
+			docker network disconnect "$$1" "$$2"; \
+		fi; \
+	}; \
+	for proxy in $$(docker ps -q --filter $(NCDD_PROXY_FILTER)); do \
+		disconnect "$(WORDPRESS_NETWORK)" "$$proxy" || exit 1; \
+	done; \
+	for mariadb in $$($(WORDPRESS_COMPOSE) ps -q mariadb); do \
+		disconnect "$(NEXTCLOUD_NETWORK)" "$$mariadb" || exit 1; \
+	done
 
 _provision-user:
 	@echo "Provisioning admin user..."
-	@curl -sS -u admin:admin \
-		-X POST "$(NEXTCLOUD_BASE_URL)/ocs/v2.php/apps/admin_group_manager/api/v1/admin-group" \
-		-H "OCS-APIREQUEST: true" \
-		-d "groupid=admlibrecode" \
-		-d "email=adm@librecode.coop" \
-		-d "displayname=Adm Librecode" >/dev/null || true
+	@$(WORDPRESS_CLI_STDIN) eval-file - < $(ROOT_DIR)/.docker/wordpress/provision-admin-group.php
