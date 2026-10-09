@@ -1,0 +1,18 @@
+name: Compose configuration
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  compose-config:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          submodules: true
+
+      - name: Validate Compose configuration
+        run: make test-config
