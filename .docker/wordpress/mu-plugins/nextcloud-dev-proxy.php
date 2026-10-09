@@ -4,7 +4,7 @@ const LIBRECODE_DEV_PROXY_CA = '/etc/librecode-dev-proxy-certs/nginx-proxy-ca.cr
 
 function librecode_dev_proxy_nextcloud_host( string $url ): ?string {
 	$nextcloud_host = wp_parse_url( (string) get_option( 'nextcloud_api_host' ), PHP_URL_HOST );
-	if ( ! $nextcloud_host || wp_parse_url( $url, PHP_URL_HOST ) !== $nextcloud_host || ! is_readable( LIBRECODE_DEV_PROXY_CA ) ) {
+	if ( ! $nextcloud_host || wp_parse_url( $url, PHP_URL_HOST ) !== $nextcloud_host ) {
 		return null;
 	}
 
@@ -14,8 +14,14 @@ function librecode_dev_proxy_nextcloud_host( string $url ): ?string {
 add_filter(
 	'http_request_args',
 	static function ( array $args, string $url ): array {
-		if ( librecode_dev_proxy_nextcloud_host( $url ) ) {
+		if ( ! librecode_dev_proxy_nextcloud_host( $url ) ) {
+			return $args;
+		}
+
+		if ( is_readable( LIBRECODE_DEV_PROXY_CA ) ) {
 			$args['sslcertificates'] = LIBRECODE_DEV_PROXY_CA;
+		} else {
+			error_log( 'The NCDD shared proxy CA is not available at ' . LIBRECODE_DEV_PROXY_CA . '.' );
 		}
 
 		return $args;
@@ -35,6 +41,7 @@ add_action(
 		// libcurl resolves *.localhost to the loopback (RFC 6761) and skips Docker DNS, where the shared proxy alias lives.
 		$proxy_ip = gethostbyname( $nextcloud_host );
 		if ( $proxy_ip === $nextcloud_host ) {
+			error_log( "The NCDD shared proxy alias {$nextcloud_host} does not resolve on the WordPress network." );
 			return;
 		}
 

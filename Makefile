@@ -18,7 +18,8 @@ NEXTCLOUD_APPS_DIR := $(NEXTCLOUD_DIR)/volumes/nextcloud/apps-extra
 LOCAL_UID := $(shell id -u)
 LOCAL_GID := $(shell id -g)
 WORDPRESS_HTTP_PORT ?= 8080
-WORDPRESS_SITE_URL ?= http://localhost:$(WORDPRESS_HTTP_PORT)
+WORDPRESS_LEGACY_SITE_URL := http://localhost
+WORDPRESS_SITE_URL ?= http://127.0.0.1:$(WORDPRESS_HTTP_PORT)
 WORDPRESS_SITE_TITLE ?= LibreSign SaaS
 WORDPRESS_ADMIN_USER ?= admin
 WORDPRESS_ADMIN_PASSWORD ?= admin
@@ -43,6 +44,9 @@ SITE_COMPOSE := env UID=$(LOCAL_UID) GID=$(LOCAL_GID) HTTP_PORT=$(SITE_HTTP_PORT
 NEXTCLOUD_OCC := $(NEXTCLOUD_COMPOSE) exec -u www-data nextcloud php occ
 WORDPRESS_CLI := $(WORDPRESS_COMPOSE) exec wordpress wp --allow-root
 WORDPRESS_CLI_STDIN := $(WORDPRESS_COMPOSE) exec -T wordpress wp --allow-root
+NEXTCLOUD_NETWORK = $$($(NEXTCLOUD_COMPOSE) config | sed -n 's/^name: //p')_default
+WORDPRESS_NETWORK = $$($(WORDPRESS_COMPOSE) config | sed -n 's/^name: //p')_default
+NCDD_PROXY_FILTER := label=coop.librecode.dev-proxy=true
 
 _help:
 	@echo "LibreSign SaaS - Available commands:"
@@ -69,7 +73,7 @@ _help:
 	@echo "  NEXTCLOUD_PROTOCOL               - Nextcloud protocol behind the shared proxy (default: https)"
 	@echo "  NEXTCLOUD_ADMIN_USER             - Nextcloud admin username (default: admin)"
 	@echo "  NEXTCLOUD_ADMIN_PASSWORD         - Nextcloud admin password (default: admin)"
-	@echo "  WORDPRESS_SITE_URL               - WordPress site URL for first install (default: http://localhost:8080)"
+	@echo "  WORDPRESS_SITE_URL               - WordPress site URL for first install (default: http://127.0.0.1:8080)"
 	@echo "  WORDPRESS_ADMIN_USER             - WordPress admin username for first install (default: admin)"
 	@echo "  WORDPRESS_ADMIN_PASSWORD         - WordPress admin password for first install (default: admin)"
 	@echo "  WORDPRESS_ADMIN_EMAIL            - WordPress admin email for first install (default: admin@example.com)"
@@ -117,15 +121,15 @@ down:
 _down-site:
 	$(SITE_COMPOSE) down
 
-_down-wordpress:
+_down-wordpress: _disconnect-networks
 	$(WORDPRESS_COMPOSE) down
 
-_down-nextcloud:
+_down-nextcloud: _disconnect-networks
 	$(NEXTCLOUD_COMPOSE) down
 
 _up-site: _ensure-site-repo _prepare-site-output-dir _refresh-site-images _start-site
 
-_up-wordpress: _refresh-wordpress-images _start-wordpress _install-wordpress _wait-wordpress _enable-wordpress-plugin
+_up-wordpress: _refresh-wordpress-images _start-wordpress _install-wordpress _wait-wordpress _migrate-wordpress-url _enable-wordpress-plugin
 
 _up-nextcloud: _refresh-nextcloud-images _start-nextcloud _wait-nextcloud _fix-nextcloud-apps-permissions
 
@@ -179,6 +183,7 @@ _start-site:
 
 _start-wordpress:
 	@echo "Starting WordPress services..."
+	@docker volume create librecode-dev-proxy-certs >/dev/null
 	@$(WORDPRESS_COMPOSE) up -d mariadb wordpress nginx mailpit
 
 _start-nextcloud:
@@ -250,6 +255,14 @@ _fix-nextcloud-apps-permissions:
 	@echo "Fixing Nextcloud apps-extra permissions..."
 	@$(NEXTCLOUD_COMPOSE) exec -u root nextcloud sh -lc 'mkdir -p /var/www/html/apps-extra && chown -R $(LOCAL_UID):$(LOCAL_GID) /var/www/html/apps-extra' >/dev/null
 
+_migrate-wordpress-url:
+	@for option in home siteurl; do \
+		if [ "$$($(WORDPRESS_CLI_STDIN) option get $$option)" = "$(WORDPRESS_LEGACY_SITE_URL)" ]; then \
+			echo "Moving WordPress $$option from $(WORDPRESS_LEGACY_SITE_URL) to $(WORDPRESS_SITE_URL)..."; \
+			$(WORDPRESS_CLI_STDIN) option update $$option "$(WORDPRESS_SITE_URL)" >/dev/null || exit 1; \
+		fi; \
+	done
+
 _enable-wordpress-plugin:
 	@echo "Enabling WordPress plugin..."
 	@$(WORDPRESS_CLI) plugin activate woocommerce-nextcloud-admin-group-manager
@@ -284,17 +297,35 @@ _set-wordpress-dsn:
 	@$(NEXTCLOUD_OCC) config:system:set wordpress_dsn --value "mysql:host=wordpress-mariadb;port=3306;dbname=wordpress;user=root;password=root" >/dev/null
 
 _set-nextcloud-api-host:
-	@nextcloud_url=$$($(NEXTCLOUD_COMPOSE) exec -T nextcloud sh -c 'printf "%s://%s" "$$NEXTCLOUD_PROTOCOL" "$$NEXTCLOUD_HOST"'); \
+	@nextcloud_url=$$($(NEXTCLOUD_COMPOSE) exec -T nextcloud sh -c 'printf "%s://%s" "$${NEXTCLOUD_PROTOCOL:?}" "$${NEXTCLOUD_HOST:?}"') && \
 	$(WORDPRESS_CLI) option update nextcloud_api_host "$$nextcloud_url" >/dev/null
 
 _connect-networks:
-	@echo "Connecting WordPress to the Nextcloud network..."
-	@NEXTCLOUD_NETWORK=$$(docker inspect -f '{{range $$k,$$v := .NetworkSettings.Networks}}{{println $$k}}{{end}}' $$($(NEXTCLOUD_COMPOSE) ps -q nextcloud) | head -n1); \
-	for service in wordpress mariadb; do \
-		container=$$($(WORDPRESS_COMPOSE) ps -q $$service); \
-		if ! docker inspect -f '{{json .NetworkSettings.Networks}}' $$container | grep -q "\"$$NEXTCLOUD_NETWORK\""; then \
-			docker network connect --alias wordpress-$$service $$NEXTCLOUD_NETWORK $$container || exit 1; \
+	@echo "Connecting the Nextcloud proxy and the WordPress database..."
+	@nextcloud_host=$$($(NEXTCLOUD_COMPOSE) exec -T nextcloud sh -c 'printf "%s" "$${NEXTCLOUD_HOST:?}"') || exit 1; \
+	proxy=$$(docker ps -q --filter $(NCDD_PROXY_FILTER)); \
+	mariadb=$$($(WORDPRESS_COMPOSE) ps -q mariadb); \
+	if [ -z "$$proxy" ] || [ -z "$$mariadb" ]; then \
+		echo "The NCDD shared proxy and the WordPress database must be running."; \
+		exit 1; \
+	fi; \
+	connect() { \
+		docker inspect -f '{{json .NetworkSettings.Networks}}' "$$3" | grep -q "\"$$1\"" || docker network connect --alias "$$2" "$$1" "$$3"; \
+	}; \
+	connect "$(WORDPRESS_NETWORK)" "$$nextcloud_host" "$$proxy" && \
+	connect "$(NEXTCLOUD_NETWORK)" wordpress-mariadb "$$mariadb"
+
+_disconnect-networks:
+	@disconnect() { \
+		if docker inspect -f '{{json .NetworkSettings.Networks}}' "$$2" | grep -q "\"$$1\""; then \
+			docker network disconnect "$$1" "$$2"; \
 		fi; \
+	}; \
+	for proxy in $$(docker ps -q --filter $(NCDD_PROXY_FILTER)); do \
+		disconnect "$(WORDPRESS_NETWORK)" "$$proxy" || exit 1; \
+	done; \
+	for mariadb in $$($(WORDPRESS_COMPOSE) ps -q mariadb); do \
+		disconnect "$(NEXTCLOUD_NETWORK)" "$$mariadb" || exit 1; \
 	done
 
 _provision-user:

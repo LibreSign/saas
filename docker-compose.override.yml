@@ -2,7 +2,7 @@ services:
   wordpress:
     environment:
       PROD_SITE_URL: https://account.libresign.coop
-      LOCAL_SITE_URL: http://localhost:${WORDPRESS_HTTP_PORT:-8080}
+      LOCAL_SITE_URL: http://127.0.0.1:${WORDPRESS_HTTP_PORT:-8080}
       WORDPRESS_LOCAL_USERS_PASSWORD: ${WORDPRESS_LOCAL_USERS_PASSWORD:-admin}
       WORDPRESS_LOCAL_RESET_ALL_USERS_PASSWORDS: ${WORDPRESS_LOCAL_RESET_ALL_USERS_PASSWORDS:-1}
       WORDPRESS_LOCAL_RESET_PASSWORD_FOR_USER: ${WORDPRESS_LOCAL_RESET_PASSWORD_FOR_USER:-}
@@ -79,3 +79,4 @@ services:
 volumes:
   librecode-dev-proxy-certs:
     name: librecode-dev-proxy-certs
+    external: true

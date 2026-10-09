@@ -75,13 +75,17 @@ To keep local development simple and avoid `/etc/hosts` changes, the static site
 is exposed on its own localhost port instead of using the production subdomain
 layout:
 
-- WordPress: <http://localhost:8080>
+- WordPress: <http://127.0.0.1:8080>
 - Static site: <http://localhost:8081>
 - Nextcloud: <https://nextcloud-development.localhost>, served by the
   `nextcloud-development` shared proxy, which owns host ports `80` and `443`
 
 WordPress reaches Nextcloud through the same HTTPS URL and validates its
-certificate against the shared proxy's local certificate authority.
+certificate against the shared proxy's local certificate authority. WordPress
+uses `127.0.0.1` instead of `localhost` because the shared proxy sends HSTS for
+`https://localhost`, which makes browsers upgrade `http://localhost:8080` to
+HTTPS. Existing installs that still use `http://localhost` are moved to the new
+URL by `make up`.
 
 `make up` refreshes the remote Docker images used by the WordPress, static site,
 and Nextcloud services and rebuilds local buildable services before starting the
