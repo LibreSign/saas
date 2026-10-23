@@ -59,7 +59,7 @@ test.describe( 'Signing up for a plan', () => {
 		await mailTo( 'admin@example.com', `#${ orderId }` );
 	} );
 
-	test.fail( 'a workspace ordered while Nextcloud is down is created by the scheduled retry', { annotation: { type: 'issue', description: 'https://github.com/LibreSign/woocommerce-nextcloud-admin-group-manager/issues/34' } }, async ( { page } ) => {
+	test( 'a workspace ordered while Nextcloud is down is created by the scheduled retry', async ( { page } ) => {
 		const customer = newCustomer( 'Diego' );
 
 		nextcloud.stop();
