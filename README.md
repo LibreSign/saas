@@ -89,6 +89,24 @@ On a fresh WordPress database, `make up` also performs the initial WordPress
 installation via WP-CLI and restarts the WordPress container once so the
 `wordpress-docker` entrypoint can install the configured plugins and themes.
 
+## End-to-end tests
+
+End-to-end tests cover the customer workflows across WordPress and Nextcloud:
+signing up for a plan, logging into Nextcloud with the store account, renewing,
+cancelling and changing plan.
+
+They run on a separate stack built from scratch, with the plugins and theme
+declared in `docker-compose.override.yml`, so they never touch the local
+database. They need Docker and Node.js:
+
+```bash
+npm ci
+npx playwright install chromium
+npm run env:start    # WordPress on :8891, Nextcloud on :8892, Mailpit on :8893
+npm run test:e2e
+npm run env:stop
+```
+
 ## Integration Flow
 
 WordPress is the customer-facing commerce and account portal (plans, subscriptions, invoices, payments, and account reports).
