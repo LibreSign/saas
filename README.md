@@ -15,6 +15,10 @@ Initialize them before the first `make up`:
 git submodule update --init
 ```
 
+The site build uses writable, project-local npm and Composer caches under
+`.cache/` instead of relying on potentially root-owned caches from the host.
+These caches are ignored by Git.
+
 The static site (`site/`) is a regular cloned repository managed by
 `make up`. On the first run, the Makefile clones `https://github.com/LibreSign/site.git`
 automatically and checks out `main`.
@@ -58,10 +62,28 @@ For local development on Linux, the repository `Makefile` loads `.env`,
 maps `host.docker.internal` into the site container, and publishes both
 fragments directly to the local WordPress REST endpoints by default.
 
-Any LibreSign/SaaS-specific WordPress runtime wiring (webhook secrets,
-allowlists, request size overrides for fragment uploads) lives in this
-repository via `docker-compose.override.yml` and local override files, not in
-the upstream `wordpress-docker` repository.
+The tracked `docker-compose.saas.yml` contains the WordPress integration
+settings required by LibreSign SaaS (plugins, networking, ports and volumes).
+These belong in the SaaS repository, not in the shared `wordpress-docker`
+submodule or in a developer's local configuration.
+
+For optional machine-specific settings, copy the provided example:
+
+```bash
+cp docker-compose.override.example.yml docker-compose.override.yml
+```
+
+Edit `docker-compose.override.yml` as needed. It is ignored by Git and is
+automatically applied **last** by `make up`, `make down` and `make test-config`
+when present. No local override is needed for the default `make up` workflow.
+The Compose file order is `wordpress-docker/docker-compose.yml`, then
+`docker-compose.saas.yml`, then the optional local override. With explicit
+`-f` files, Docker Compose resolves relative bind mount paths from the first
+Compose file (`wordpress-docker/`); take this into account when adding local
+volumes. Do not commit machine-specific values or credentials.
+
+Validate the combined configuration with `make test-config` before starting
+the environment.
 
 You can pass component names after `make up` to start only part of the local
 stack:
@@ -75,9 +97,17 @@ To keep local development simple and avoid `/etc/hosts` changes, the static site
 is exposed on its own localhost port instead of using the production subdomain
 layout:
 
-- WordPress: <http://localhost>
+- WordPress: <http://127.0.0.1:8080>
 - Static site: <http://localhost:8081>
-- Nextcloud: <http://localhost:8082>
+- Nextcloud: <https://nextcloud-development.localhost>, served by the
+  `nextcloud-development` shared proxy, which owns host ports `80` and `443`
+
+WordPress reaches Nextcloud through the same HTTPS URL and validates its
+certificate against the shared proxy's local certificate authority. WordPress
+uses `127.0.0.1` instead of `localhost` because the shared proxy sends HSTS for
+`https://localhost`, which makes browsers upgrade `http://localhost:8080` to
+HTTPS. Existing installs that still use `http://localhost` are moved to the new
+URL by `make up`.
 
 `make up` refreshes the remote Docker images used by the WordPress, static site,
 and Nextcloud services and rebuilds local buildable services before starting the
@@ -89,6 +119,11 @@ On a fresh WordPress database, `make up` also performs the initial WordPress
 installation via WP-CLI and restarts the WordPress container once so the
 `wordpress-docker` entrypoint can install the configured plugins and themes.
 
+`make test` validates the Compose configuration and checks the running
+integration: required services, the WordPress -> Nextcloud HTTPS connection, an
+authenticated Nextcloud API request, the required apps and plugins, and that
+running `make up` again keeps the existing configuration.
+
 ## End-to-end tests
 
 End-to-end tests cover the customer workflows across WordPress and Nextcloud:
@@ -96,8 +131,8 @@ signing up for a plan, logging into Nextcloud with the store account, renewing,
 cancelling and changing plan.
 
 They run on a separate stack built from scratch, with the plugins and theme
-declared in `docker-compose.override.yml`, so they never touch the local
-database. They need Docker and Node.js:
+declared in `docker-compose.saas.yml`, so they never touch the local
+database or require a developer-specific override. They need Docker and Node.js:
 
 ```bash
 npm ci
