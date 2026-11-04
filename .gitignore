@@ -1,2 +1,6 @@
 # Local clone managed by Makefile (not tracked in this repository)
 /site/
+
+# Developer-only local configuration; use the committed example as a template.
+/.env
+/docker-compose.override.yml

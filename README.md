@@ -58,10 +58,28 @@ For local development on Linux, the repository `Makefile` loads `.env`,
 maps `host.docker.internal` into the site container, and publishes both
 fragments directly to the local WordPress REST endpoints by default.
 
-Any LibreSign/SaaS-specific WordPress runtime wiring (webhook secrets,
-allowlists, request size overrides for fragment uploads) lives in this
-repository via `docker-compose.override.yml` and local override files, not in
-the upstream `wordpress-docker` repository.
+The tracked `docker-compose.saas.yml` contains the WordPress integration
+settings required by LibreSign SaaS (plugins, networking, ports and volumes).
+These belong in the SaaS repository, not in the shared `wordpress-docker`
+submodule or in a developer's local configuration.
+
+For optional machine-specific settings, copy the provided example:
+
+```bash
+cp docker-compose.override.example.yml docker-compose.override.yml
+```
+
+Edit `docker-compose.override.yml` as needed. It is ignored by Git and is
+automatically applied **last** by `make up`, `make down` and `make test-config`
+when present. No local override is needed for the default `make up` workflow.
+The Compose file order is `wordpress-docker/docker-compose.yml`, then
+`docker-compose.saas.yml`, then the optional local override. With explicit
+`-f` files, Docker Compose resolves relative bind mount paths from the first
+Compose file (`wordpress-docker/`); take this into account when adding local
+volumes. Do not commit machine-specific values or credentials.
+
+Validate the combined configuration with `make test-config` before starting
+the environment.
 
 You can pass component names after `make up` to start only part of the local
 stack:
