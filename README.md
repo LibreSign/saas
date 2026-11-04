@@ -15,6 +15,10 @@ Initialize them before the first `make up`:
 git submodule update --init
 ```
 
+The site build uses writable, project-local npm and Composer caches under
+`.cache/` instead of relying on potentially root-owned caches from the host.
+These caches are ignored by Git.
+
 The static site (`site/`) is a regular cloned repository managed by
 `make up`. On the first run, the Makefile clones `https://github.com/LibreSign/site.git`
 automatically and checks out `main`.

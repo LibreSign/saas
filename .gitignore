@@ -7,3 +7,4 @@
 # Developer-only local configuration; use the committed example as a template.
 /.env
 /docker-compose.override.yml
+/.cache/
