@@ -1,0 +1,15 @@
+{
+	"name": "libresign-saas",
+	"private": true,
+	"license": "AGPL-3.0-or-later",
+	"description": "End-to-end tests for the LibreSign SaaS stack",
+	"scripts": {
+		"test:e2e": "playwright test",
+		"test:e2e:ui": "playwright test --ui",
+		"env:start": "sh tests/E2E/support/setup.sh",
+		"env:stop": "docker compose -f tests/E2E/docker-compose.yml down -v"
+	},
+	"devDependencies": {
+		"@playwright/test": "^1.63.0"
+	}
+}

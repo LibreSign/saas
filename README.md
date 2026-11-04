@@ -116,9 +116,27 @@ installation via WP-CLI and restarts the WordPress container once so the
 `wordpress-docker` entrypoint can install the configured plugins and themes.
 
 `make test` validates the Compose configuration and checks the running
-integration: required services, the WordPress → Nextcloud HTTPS connection, an
+integration: required services, the WordPress -> Nextcloud HTTPS connection, an
 authenticated Nextcloud API request, the required apps and plugins, and that
 running `make up` again keeps the existing configuration.
+
+## End-to-end tests
+
+End-to-end tests cover the customer workflows across WordPress and Nextcloud:
+signing up for a plan, logging into Nextcloud with the store account, renewing,
+cancelling and changing plan.
+
+They run on a separate stack built from scratch, with the plugins and theme
+declared in `docker-compose.saas.yml`, so they never touch the local
+database or require a developer-specific override. They need Docker and Node.js:
+
+```bash
+npm ci
+npx playwright install chromium
+npm run env:start    # WordPress on :8891, Nextcloud on :8892, Mailpit on :8893
+npm run test:e2e
+npm run env:stop
+```
 
 ## Integration Flow
 
