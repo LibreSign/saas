@@ -14,6 +14,9 @@ if ! $wp core is-installed 2>/dev/null; then
 	$compose up -d --wait wordpress
 fi
 
+# The E2E stack uses direct HTTP between containers; NCDD uses a separate HTTPS proxy.
+$wp option update nextcloud_api_host http://nextcloud
+[ "$( $wp option get nextcloud_api_host )" = "http://nextcloud" ]
 $wp option update nextcloud_api_login admin
 $wp option update nextcloud_api_password admin
 $wp option update smtp_from noreply@example.com
