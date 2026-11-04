@@ -19,6 +19,17 @@ $wp option update nextcloud_api_host http://nextcloud
 [ "$( $wp option get nextcloud_api_host )" = "http://nextcloud" ]
 $wp option update nextcloud_api_login admin
 $wp option update nextcloud_api_password admin
+# Fail during environment setup rather than waiting for Playwright timeouts.
+$wp eval '
+	if ( ! function_exists( "agm_nextcloud_request" ) ) {
+		WP_CLI::error( "The Nextcloud integration plugin is not active." );
+	}
+	$response = agm_nextcloud_request( "GET", "/ocs/v2.php/cloud/user?format=json" );
+	if ( ! $response->succeeded() ) {
+		WP_CLI::error( $response->failure_message() );
+	}
+	WP_CLI::success( "WordPress can authenticate against Nextcloud." );
+'
 $wp option update smtp_from noreply@example.com
 $wp theme activate libresign
 $wp plugin deactivate product-open-pricing-name-your-price-for-woocommerce
