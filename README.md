@@ -89,6 +89,15 @@ On a fresh WordPress database, `make up` also performs the initial WordPress
 installation via WP-CLI and restarts the WordPress container once so the
 `wordpress-docker` entrypoint can install the configured plugins and themes.
 
+Every service is published on `127.0.0.1` only, so the stack is not reachable
+from other machines on the network.
+
+Each time the WordPress container starts, the password of every WordPress user
+is reset to `WORDPRESS_LOCAL_USERS_PASSWORD` (default: `admin`). When the local
+database is loaded from a production dump, this applies to every customer and
+administrator account in it. Set `WORDPRESS_LOCAL_RESET_ALL_USERS_PASSWORDS=0`
+in `.env` to keep the passwords from the dump.
+
 ## End-to-end tests
 
 End-to-end tests cover the customer workflows across WordPress and Nextcloud:
