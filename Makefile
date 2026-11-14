@@ -14,6 +14,7 @@ SITE_HTTP_PORT ?= 8081
 SITE_BROWSERSYNC_PORT ?= 3000
 SITE_SERVER_MODE ?= build
 NEXTCLOUD_HTTP_PORT ?= 8082
+NEXTCLOUD_HTTPS_PORT ?= 8443
 SITE_BASE_URL := http://localhost:$(SITE_HTTP_PORT)
 NEXTCLOUD_BASE_URL := http://localhost:$(NEXTCLOUD_HTTP_PORT)
 NEXTCLOUD_APPS_DIR := $(NEXTCLOUD_DIR)/volumes/nextcloud/apps-extra
@@ -27,20 +28,20 @@ WORDPRESS_ADMIN_EMAIL ?= admin@example.com
 WORDPRESS_WEBHOOK_BASE_URL ?= http://host.docker.internal
 LIBRESIGN_PUBLISH_HEADER_FRAGMENTS ?= true
 LIBRESIGN_HEADER_WEBHOOK_URL ?= $(WORDPRESS_WEBHOOK_BASE_URL)/wp-json/libresign/v1/header-fragment
-LIBRESIGN_HEADER_WEBHOOK_SECRET ?= change-me-header
+LIBRESIGN_HEADER_WEBHOOK_SECRET ?=
 LIBRESIGN_HEADER_WEBHOOK_ALLOWED_IPS ?=
 LIBRESIGN_PUBLISH_FOOTER_FRAGMENTS ?= true
 LIBRESIGN_FOOTER_WEBHOOK_URL ?= $(WORDPRESS_WEBHOOK_BASE_URL)/wp-json/libresign/v1/footer-fragment
-LIBRESIGN_FOOTER_WEBHOOK_SECRET ?= change-me-footer
+LIBRESIGN_FOOTER_WEBHOOK_SECRET ?=
 LIBRESIGN_FOOTER_WEBHOOK_ALLOWED_IPS ?=
 COMPONENT_TARGETS := site wordpress nextcloud
 SELECTED_COMPONENTS := $(filter $(COMPONENT_TARGETS),$(MAKECMDGOALS))
 UP_COMPONENTS := $(if $(SELECTED_COMPONENTS),$(SELECTED_COMPONENTS),$(COMPONENT_TARGETS))
 
 # Docker Compose commands
-NEXTCLOUD_COMPOSE := HTTP_PORT=$(NEXTCLOUD_HTTP_PORT) docker compose -f $(NEXTCLOUD_DIR)/docker-compose.yml
+NEXTCLOUD_COMPOSE := HTTP_PORT=$(NEXTCLOUD_HTTP_PORT) HTTPS_PORT=$(NEXTCLOUD_HTTPS_PORT) docker compose -f $(NEXTCLOUD_DIR)/docker-compose.yml
 WORDPRESS_COMPOSE := docker compose -f $(WORDPRESS_DIR)/docker-compose.yml -f $(ROOT_DIR)/docker-compose.override.yml
-SITE_COMPOSE := UID=$(LOCAL_UID) GID=$(LOCAL_GID) HTTP_PORT=$(SITE_HTTP_PORT) HTTP_PORT_BROWSERSYNC=$(SITE_BROWSERSYNC_PORT) SERVER_MODE=$(SITE_SERVER_MODE) URL_SITE=$(SITE_BASE_URL) LIBRESIGN_PUBLISH_HEADER_FRAGMENTS=$(LIBRESIGN_PUBLISH_HEADER_FRAGMENTS) LIBRESIGN_HEADER_WEBHOOK_URL=$(LIBRESIGN_HEADER_WEBHOOK_URL) LIBRESIGN_HEADER_WEBHOOK_SECRET=$(LIBRESIGN_HEADER_WEBHOOK_SECRET) LIBRESIGN_PUBLISH_FOOTER_FRAGMENTS=$(LIBRESIGN_PUBLISH_FOOTER_FRAGMENTS) LIBRESIGN_FOOTER_WEBHOOK_URL=$(LIBRESIGN_FOOTER_WEBHOOK_URL) LIBRESIGN_FOOTER_WEBHOOK_SECRET=$(LIBRESIGN_FOOTER_WEBHOOK_SECRET) docker compose -f $(SITE_DIR)/docker-compose.yml
+SITE_COMPOSE := env UID=$(LOCAL_UID) GID=$(LOCAL_GID) HTTP_PORT=$(SITE_HTTP_PORT) HTTP_PORT_BROWSERSYNC=$(SITE_BROWSERSYNC_PORT) SERVER_MODE=$(SITE_SERVER_MODE) URL_SITE=$(SITE_BASE_URL) LIBRESIGN_PUBLISH_HEADER_FRAGMENTS=$(LIBRESIGN_PUBLISH_HEADER_FRAGMENTS) LIBRESIGN_HEADER_WEBHOOK_URL=$(LIBRESIGN_HEADER_WEBHOOK_URL) LIBRESIGN_HEADER_WEBHOOK_SECRET=$(LIBRESIGN_HEADER_WEBHOOK_SECRET) LIBRESIGN_PUBLISH_FOOTER_FRAGMENTS=$(LIBRESIGN_PUBLISH_FOOTER_FRAGMENTS) LIBRESIGN_FOOTER_WEBHOOK_URL=$(LIBRESIGN_FOOTER_WEBHOOK_URL) LIBRESIGN_FOOTER_WEBHOOK_SECRET=$(LIBRESIGN_FOOTER_WEBHOOK_SECRET) docker compose -f $(SITE_DIR)/docker-compose.yml
 NEXTCLOUD_OCC := $(NEXTCLOUD_COMPOSE) exec -u www-data nextcloud php occ
 WORDPRESS_CLI := $(WORDPRESS_COMPOSE) exec wordpress wp --allow-root
 
@@ -63,6 +64,7 @@ _help:
 	@echo "  SITE_BROWSERSYNC_PORT            - Static site HMR port (default: 3000)"
 	@echo "  SITE_SERVER_MODE                 - Static site container mode for make up (default: build)"
 	@echo "  NEXTCLOUD_HTTP_PORT              - Nextcloud port (default: 8082)"
+	@echo "  NEXTCLOUD_HTTPS_PORT             - Nextcloud HTTPS port (default: 8443)"
 	@echo "  NEXTCLOUD_ADMIN_USER             - Nextcloud admin username (default: admin)"
 	@echo "  NEXTCLOUD_ADMIN_PASSWORD         - Nextcloud admin password (default: admin)"
 	@echo "  WORDPRESS_SITE_URL               - WordPress site URL for first install (default: http://localhost)"
@@ -147,7 +149,7 @@ _refresh-wordpress-images:
 
 _refresh-nextcloud-images:
 	@echo "Refreshing Nextcloud images..."
-	@$(NEXTCLOUD_COMPOSE) pull mysql redis nextcloud nginx
+	@$(NEXTCLOUD_COMPOSE) pull database redis nextcloud nginx
 
 _start-site:
 	@echo "Starting site services..."
@@ -169,7 +171,7 @@ _start-wordpress:
 
 _start-nextcloud:
 	@echo "Starting Nextcloud services..."
-	@$(NEXTCLOUD_COMPOSE) up -d mysql redis nextcloud nginx
+	@$(NEXTCLOUD_COMPOSE) up -d database redis nextcloud nginx
 
 _install-wordpress:
 	@echo "Ensuring WordPress core is installed..."
