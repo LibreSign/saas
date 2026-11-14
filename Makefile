@@ -19,6 +19,11 @@ NEXTCLOUD_BASE_URL := http://localhost:$(NEXTCLOUD_HTTP_PORT)
 NEXTCLOUD_APPS_DIR := $(NEXTCLOUD_DIR)/volumes/nextcloud/apps-extra
 LOCAL_UID := $(shell id -u)
 LOCAL_GID := $(shell id -g)
+WORDPRESS_DATABASE_NETWORK := saas-wordpress-database
+WORDPRESS_LOGIN_DATABASE_USER ?= wordpress_login
+ifndef WORDPRESS_LOGIN_DATABASE_PASSWORD
+WORDPRESS_LOGIN_DATABASE_PASSWORD := $(shell head -c 24 /dev/urandom | od -An -tx1 | tr -d ' \n')
+endif
 WORDPRESS_SITE_URL ?= http://localhost
 WORDPRESS_SITE_TITLE ?= LibreSign SaaS
 WORDPRESS_ADMIN_USER ?= admin
@@ -78,6 +83,8 @@ _help:
 	@echo "  LIBRESIGN_FOOTER_WEBHOOK_SECRET  - Shared secret for footer artifact publishing"
 	@echo "  WORDPRESS_LOCAL_USERS_PASSWORD   - WordPress users password (default: admin)"
 	@echo "  WORDPRESS_LOCAL_RESET_ALL_USERS_PASSWORDS - Reset all passwords on startup (default: 1)"
+	@echo "  WORDPRESS_LOGIN_DATABASE_USER    - Database user wordpress_login_backend uses to read WordPress accounts (default: wordpress_login)"
+	@echo "  WORDPRESS_LOGIN_DATABASE_PASSWORD - Password of that database user (default: random on each make up)"
 	@echo ""
 
 help: _help
@@ -238,7 +245,7 @@ _enable-wordpress-plugin:
 	@echo "Enabling WordPress plugin..."
 	@$(WORDPRESS_CLI) plugin activate woocommerce-nextcloud-admin-group-manager >/dev/null || true
 
-_setup-apps: _ensure-wordpress-app _ensure-nextcloud-app _enable-apps _set-wordpress-dsn
+_setup-apps: _ensure-wordpress-app _ensure-nextcloud-app _enable-apps _create-wordpress-login-database-user _set-wordpress-dsn
 
 _ensure-wordpress-app:
 	@echo "Setting up wordpress_login_backend app..."
@@ -264,15 +271,29 @@ _enable-apps:
 	@$(NEXTCLOUD_OCC) app:enable admin_group_manager --force >/dev/null || true
 	@$(NEXTCLOUD_OCC) app:enable groupquota --force >/dev/null || true
 
+_create-wordpress-login-database-user:
+	@echo "Creating the wordpress_login_backend database user..."
+	@WORDPRESS_DATABASE=$$($(WORDPRESS_COMPOSE) exec -T wordpress printenv WORDPRESS_DB_NAME) && \
+	printf '%s\n' \
+		"CREATE USER IF NOT EXISTS '$(WORDPRESS_LOGIN_DATABASE_USER)'@'%' IDENTIFIED BY '$(WORDPRESS_LOGIN_DATABASE_PASSWORD)';" \
+		"ALTER USER '$(WORDPRESS_LOGIN_DATABASE_USER)'@'%' IDENTIFIED BY '$(WORDPRESS_LOGIN_DATABASE_PASSWORD)';" \
+		"GRANT SELECT ON $$WORDPRESS_DATABASE.wp_users TO '$(WORDPRESS_LOGIN_DATABASE_USER)'@'%';" \
+		"GRANT SELECT ON $$WORDPRESS_DATABASE.wp_wc_orders TO '$(WORDPRESS_LOGIN_DATABASE_USER)'@'%';" \
+		"GRANT UPDATE (user_pass) ON $$WORDPRESS_DATABASE.wp_users TO '$(WORDPRESS_LOGIN_DATABASE_USER)'@'%';" \
+	| $(WORDPRESS_COMPOSE) exec -T mariadb sh -c 'mariadb -uroot -p"$$MARIADB_ROOT_PASSWORD"'
+
 _set-wordpress-dsn:
-	@$(NEXTCLOUD_OCC) config:system:set wordpress_dsn --value "mysql:host=mariadb;port=3306;dbname=wordpress;user=root;password=root" >/dev/null
+	@WORDPRESS_DATABASE=$$($(WORDPRESS_COMPOSE) exec -T wordpress printenv WORDPRESS_DB_NAME) && \
+	$(NEXTCLOUD_OCC) config:system:set wordpress_dsn --value "mysql:host=mariadb;port=3306;dbname=$$WORDPRESS_DATABASE;user=$(WORDPRESS_LOGIN_DATABASE_USER);password=$(WORDPRESS_LOGIN_DATABASE_PASSWORD)" >/dev/null
 
 _connect-networks:
 	@echo "Connecting Docker networks..."
 	@NEXTCLOUD_CONTAINER=$$($(NEXTCLOUD_COMPOSE) ps -q nextcloud); \
-	WORDPRESS_CONTAINER=$$($(WORDPRESS_COMPOSE) ps -q mariadb); \
-	WORDPRESS_NETWORK=$$(docker inspect -f '{{range $$k,$$v := .NetworkSettings.Networks}}{{println $$k}}{{end}}' $$WORDPRESS_CONTAINER | head -n1); \
-	docker network connect $$WORDPRESS_NETWORK $$NEXTCLOUD_CONTAINER 2>/dev/null || true
+	WORDPRESS_CONTAINER=$$($(WORDPRESS_COMPOSE) ps -q wordpress); \
+	for WORDPRESS_NETWORK in $$(docker inspect -f '{{range $$k,$$v := .NetworkSettings.Networks}}{{println $$k}}{{end}}' $$WORDPRESS_CONTAINER); do \
+		docker network disconnect $$WORDPRESS_NETWORK $$NEXTCLOUD_CONTAINER 2>/dev/null || true; \
+	done; \
+	docker network connect $(WORDPRESS_DATABASE_NETWORK) $$NEXTCLOUD_CONTAINER 2>/dev/null || true
 
 _provision-user:
 	@echo "Provisioning admin user..."
