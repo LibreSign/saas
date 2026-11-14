@@ -70,8 +70,15 @@ services:
     extends:
       file: common-services.yml
       service: mariadb
+    networks:
+      - default
+      - wordpress-database
 
   mailpit:
     image: axllent/mailpit:latest
     ports:
       - "127.0.0.1:8025:8025"
+
+networks:
+  wordpress-database:
+    name: saas-wordpress-database
