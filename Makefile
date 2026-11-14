@@ -9,7 +9,9 @@ NEXTCLOUD_DIR := $(ROOT_DIR)/nextcloud-development
 WORDPRESS_DIR := $(ROOT_DIR)/wordpress-docker
 SITE_DIR := $(ROOT_DIR)/site
 SITE_REPO_URL ?= https://github.com/LibreSign/site.git
-SITE_REPO_BRANCH ?= main
+SITE_REPO_REF ?= e57d6ad84d478612913f9112a381db5940ffb8b6
+ADMIN_GROUP_MANAGER_REF ?= ae7e1f9b67071b3d4bdae9f9865099ed0368f812
+WORDPRESS_LOGIN_BACKEND_REF ?= 6837f710416f96c62176d7d2873fe28f9762189e
 SITE_HTTP_PORT ?= 8081
 SITE_BROWSERSYNC_PORT ?= 3000
 SITE_SERVER_MODE ?= build
@@ -62,6 +64,9 @@ _help:
 	@echo "  SITE_HTTP_PORT                   - Static site port (default: 8081)"
 	@echo "  SITE_BROWSERSYNC_PORT            - Static site HMR port (default: 3000)"
 	@echo "  SITE_SERVER_MODE                 - Static site container mode for make up (default: build)"
+	@echo "  SITE_REPO_REF                    - Commit of the static site checked out by make up"
+	@echo "  ADMIN_GROUP_MANAGER_REF          - Commit of admin_group_manager checked out by make up"
+	@echo "  WORDPRESS_LOGIN_BACKEND_REF      - Commit of wordpress_login_backend checked out by make up"
 	@echo "  NEXTCLOUD_HTTP_PORT              - Nextcloud port (default: 8082)"
 	@echo "  NEXTCLOUD_ADMIN_USER             - Nextcloud admin username (default: admin)"
 	@echo "  NEXTCLOUD_ADMIN_PASSWORD         - Nextcloud admin password (default: admin)"
@@ -124,9 +129,8 @@ _ensure-site-repo:
 		git clone "$(SITE_REPO_URL)" "$(SITE_DIR)"; \
 	fi
 	@git -C "$(SITE_DIR)" remote set-url origin "$(SITE_REPO_URL)"
-	@git -C "$(SITE_DIR)" fetch origin "$(SITE_REPO_BRANCH)"
-	@git -C "$(SITE_DIR)" checkout "$(SITE_REPO_BRANCH)"
-	@git -C "$(SITE_DIR)" pull --ff-only origin "$(SITE_REPO_BRANCH)"
+	@git -C "$(SITE_DIR)" fetch origin
+	@git -C "$(SITE_DIR)" checkout -q "$(SITE_REPO_REF)"
 
 _prepare-site-output-dir:
 	@echo "Preparing site output directory..."
@@ -245,18 +249,16 @@ _ensure-wordpress-app:
 	@if [ ! -d "$(NEXTCLOUD_APPS_DIR)/wordpress_login_backend/.git" ]; then \
 		git clone https://github.com/LibreSign/wordpress_login_backend.git $(NEXTCLOUD_APPS_DIR)/wordpress_login_backend; \
 	fi
-	@git -C $(NEXTCLOUD_APPS_DIR)/wordpress_login_backend fetch origin main
-	@git -C $(NEXTCLOUD_APPS_DIR)/wordpress_login_backend checkout main
-	@git -C $(NEXTCLOUD_APPS_DIR)/wordpress_login_backend pull --ff-only origin main
+	@git -C $(NEXTCLOUD_APPS_DIR)/wordpress_login_backend fetch origin
+	@git -C $(NEXTCLOUD_APPS_DIR)/wordpress_login_backend checkout -q $(WORDPRESS_LOGIN_BACKEND_REF)
 
 _ensure-nextcloud-app:
 	@echo "Setting up admin_group_manager app..."
 	@if [ ! -d "$(NEXTCLOUD_APPS_DIR)/admin_group_manager/.git" ]; then \
 		git clone https://github.com/LibreSign/admin_group_manager.git $(NEXTCLOUD_APPS_DIR)/admin_group_manager; \
 	fi
-	@git -C $(NEXTCLOUD_APPS_DIR)/admin_group_manager fetch origin main
-	@git -C $(NEXTCLOUD_APPS_DIR)/admin_group_manager checkout main
-	@git -C $(NEXTCLOUD_APPS_DIR)/admin_group_manager pull --ff-only origin main
+	@git -C $(NEXTCLOUD_APPS_DIR)/admin_group_manager fetch origin
+	@git -C $(NEXTCLOUD_APPS_DIR)/admin_group_manager checkout -q $(ADMIN_GROUP_MANAGER_REF)
 
 _enable-apps:
 	@echo "Enabling apps..."

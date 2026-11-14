@@ -17,7 +17,7 @@ git submodule update --init
 
 The static site (`site/`) is a regular cloned repository managed by
 `make up`. On the first run, the Makefile clones `https://github.com/LibreSign/site.git`
-automatically and checks out `main`.
+automatically and checks out the commit set in `SITE_REPO_REF`.
 
 Then start the stack:
 
@@ -82,8 +82,13 @@ layout:
 `make up` refreshes the remote Docker images used by the WordPress, static site,
 and Nextcloud services and rebuilds local buildable services before starting the
 stack. During `make up site`, the `site/` clone is also synced from
-`https://github.com/LibreSign/site.git` (`main`) automatically, so no manual
-site update step is required.
+`https://github.com/LibreSign/site.git` and checked out at `SITE_REPO_REF`
+automatically, so no manual site update step is required.
+
+Every component cloned at runtime is pinned to a commit: the Nextcloud apps and
+the static site through the `*_REF` variables of the `Makefile`, and the
+WordPress plugins and theme through the `post_install_commands` in
+`docker-compose.override.yml`. Bump these commits to update a component.
 
 On a fresh WordPress database, `make up` also performs the initial WordPress
 installation via WP-CLI and restarts the WordPress container once so the
