@@ -27,6 +27,10 @@ export function orderStatus( orderId: number ): string {
 	return wpEval( `echo wc_get_order( ${ orderId } )->get_status();` );
 }
 
+export function orderTotal( orderId: number ): number {
+	return Number( wpEval( `echo wc_get_order( ${ orderId } )->get_total();` ) );
+}
+
 export function runTheScheduledNextcloudSyncRetry( orderId: number ): void {
 	wpEval( `
 		if ( ! as_next_scheduled_action( 'agm_retry_nextcloud_sync', array( 'order_id' => ${ orderId } ), 'nextcloud-admin-group-manager' ) ) {

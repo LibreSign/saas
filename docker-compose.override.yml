@@ -66,6 +66,7 @@ services:
             source: https://github.com/pronamic/woocommerce-subscriptions.git
             post_install_commands:
               - git -C "$$PLUGIN_DIR" fetch -q origin 2459d9c8662884d62b9a92221eb21c7c6c051a62 && git -C "$$PLUGIN_DIR" checkout -q 2459d9c8662884d62b9a92221eb21c7c6c051a62
+              - wp option update woocommerce_subscriptions_apportion_recurring_price yes-upgrade
         wordpress_custom_themes:
           - slug: libresign
             source: https://github.com/LibreSign/wordpress-theme.git
