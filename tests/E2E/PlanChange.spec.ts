@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 
 import { nextcloud } from './support/nextcloud';
 import { agreeToTheTerms, aSubscriber, logInToTheStore, placeTheOrder, plansInTheStore, STORE_URL } from './support/store';
-import { subscriptionStatus } from './support/wordpress';
+import { orderTotal, subscriptionStatus } from './support/wordpress';
 
 const GIGABYTE = 1024 ** 3;
 
@@ -23,7 +23,7 @@ test.describe( 'Changing plan', () => {
 		await expect( page.getByRole( 'link', { name: 'Professional', exact: true } ) ).toHaveCount( 0 );
 	} );
 
-	test( 'upgrading from Basic to Enterprise raises the workspace storage to 800 GB', async ( { browser, page } ) => {
+	test( 'upgrading from Basic to Enterprise charges the prorated difference and raises the workspace storage to 800 GB', async ( { browser, page } ) => {
 		const { customer, subscriptionId } = await aSubscriber( page, 'Nilo' );
 		await logInToTheStore( page, customer.email, customer.password );
 
@@ -37,6 +37,8 @@ test.describe( 'Changing plan', () => {
 		await page.getByRole( 'button', { name: 'Switch subscription' } ).click();
 		await expect( page ).toHaveURL( /\/checkout\/order-received\/\d+\//, { timeout: 90_000 } );
 
+		const switchOrderId = Number( page.url().match( /order-received\/(\d+)\// )![ 1 ] );
+		expect( orderTotal( switchOrderId ) ).toBeGreaterThan( 0 );
 		expect( subscriptionStatus( subscriptionId ) ).toBe( 'active' );
 		expect( await nextcloud.account( customer.email ) ).toMatchObject( { enabled: true, quota: { quota: 800 * GIGABYTE } } );
 		await nextcloud.expectToLogIn( browser, customer.email, customer.password );

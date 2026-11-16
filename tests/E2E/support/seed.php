@@ -28,7 +28,6 @@ $options = array(
 	'woocommerce_email_from_name'                       => 'LibreSign',
 	'woocommerce_email_from_address'                    => 'noreply@example.com',
 	'woocommerce_subscriptions_allow_switching'         => 'grouped',
-	'woocommerce_subscriptions_apportion_recurring_price' => 'no',
 	'woocommerce_subscriptions_enable_early_renewal'    => 'yes',
 	'woocommerce_subscriptions_enable_retry'            => 'no',
 	'woocommerce_subscriptions_multiple_purchase'       => 'yes',
