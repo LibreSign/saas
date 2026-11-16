@@ -118,7 +118,12 @@ automatically, so no manual site update step is required.
 Every component cloned at runtime is pinned to a commit: the Nextcloud apps and
 the static site through the `*_REF` variables of the `Makefile`, and the
 WordPress plugins and theme through the `post_install_commands` in
-`docker-compose.saas.yml`. Bump these commits to update a component.
+`docker-compose.saas.yml`. The end-to-end suite downloads the same Nextcloud app
+commits in `tests/E2E/support/nextcloud-setup.sh`.
+
+Renovate (`.github/renovate.json5`) follows the branch each component is
+released from and, on Mondays, opens a single pull request that bumps every
+commit that moved, so the CI runs the new versions before they reach the stack.
 
 On a fresh WordPress database, `make up` also performs the initial WordPress
 installation via WP-CLI and restarts the WordPress container once so the

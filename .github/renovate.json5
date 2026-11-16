@@ -1,0 +1,59 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "enabledManagers": ["custom.regex"],
+  "timezone": "America/Sao_Paulo",
+  "customManagers": [
+    {
+      "customType": "regex",
+      "managerFilePatterns": ["/^Makefile$/"],
+      "matchStrings": ["SITE_REPO_REF \\?= (?<currentDigest>[0-9a-f]{40})"],
+      "datasourceTemplate": "git-refs",
+      "depNameTemplate": "site",
+      "packageNameTemplate": "https://github.com/LibreSign/site.git",
+      "currentValueTemplate": "main"
+    },
+    {
+      "customType": "regex",
+      "managerFilePatterns": ["/^Makefile$/"],
+      "matchStrings": ["ADMIN_GROUP_MANAGER_REF \\?= (?<currentDigest>[0-9a-f]{40})"],
+      "datasourceTemplate": "git-refs",
+      "depNameTemplate": "admin_group_manager",
+      "packageNameTemplate": "https://github.com/LibreSign/admin_group_manager.git",
+      "currentValueTemplate": "main"
+    },
+    {
+      "customType": "regex",
+      "managerFilePatterns": ["/^Makefile$/"],
+      "matchStrings": ["WORDPRESS_LOGIN_BACKEND_REF \\?= (?<currentDigest>[0-9a-f]{40})"],
+      "datasourceTemplate": "git-refs",
+      "depNameTemplate": "wordpress_login_backend",
+      "packageNameTemplate": "https://github.com/LibreSign/wordpress_login_backend.git",
+      "currentValueTemplate": "main"
+    },
+    {
+      "customType": "regex",
+      "managerFilePatterns": ["/^tests\\/E2E\\/support\\/nextcloud-setup\\.sh$/"],
+      "matchStrings": ["download_app (?<depName>[a-z_]+) (?<currentDigest>[0-9a-f]{40})"],
+      "datasourceTemplate": "git-refs",
+      "packageNameTemplate": "https://github.com/LibreSign/{{{depName}}}.git",
+      "currentValueTemplate": "main"
+    },
+    {
+      "customType": "regex",
+      "managerFilePatterns": ["/^docker-compose\\.saas\\.yml$/"],
+      "matchStrings": [
+        "- slug: (?<depName>\\S+)\\n\\s+source: (?<packageName>\\S+)\\n\\s+post_install_commands:\\n\\s+- git -C \"\\$\\$PLUGIN_DIR\" fetch -q origin (?<currentDigest>[0-9a-f]{40})",
+        "git clone -q (?<packageName>\\S+) wp-content/themes/(?<depName>[a-z-]+); fi\\n\\s+- git -C \"wp-content/themes/[a-z-]+\" fetch -q origin (?<currentDigest>[0-9a-f]{40})"
+      ],
+      "datasourceTemplate": "git-refs",
+      "currentValueTemplate": "{{#if (containsString packageName 'gitlab.com/wordpress-premium/')}}master{{else}}main{{/if}}"
+    }
+  ],
+  "packageRules": [
+    {
+      "matchDatasources": ["git-refs"],
+      "groupName": "pinned components",
+      "schedule": ["* * * * 1"]
+    }
+  ]
+}
