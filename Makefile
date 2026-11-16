@@ -279,7 +279,7 @@ _enable-wordpress-plugin:
 	@echo "Enabling WordPress plugin..."
 	@$(WORDPRESS_CLI) plugin activate woocommerce-nextcloud-admin-group-manager
 
-_setup-apps: _ensure-wordpress-app _ensure-nextcloud-app _enable-apps _create-wordpress-login-database-user _set-wordpress-dsn _set-nextcloud-api-host
+_setup-apps: _ensure-wordpress-app _ensure-nextcloud-app _enable-apps _enable-wordpress-order-tables _create-wordpress-login-database-user _set-wordpress-dsn _set-nextcloud-api-host
 
 _ensure-wordpress-app:
 	@echo "Setting up wordpress_login_backend app..."
@@ -304,6 +304,10 @@ _enable-apps:
 	@$(NEXTCLOUD_OCC) app:enable wordpress_login_backend --force
 	@$(NEXTCLOUD_OCC) app:enable admin_group_manager --force
 	@$(NEXTCLOUD_OCC) app:enable groupquota --force
+
+_enable-wordpress-order-tables:
+	@echo "Enabling the WooCommerce order tables..."
+	@$(WORDPRESS_CLI_STDIN) wc hpos enable --ignore-plugin-compatibility >/dev/null
 
 _create-wordpress-login-database-user:
 	@echo "Creating the wordpress_login_backend database user..."
