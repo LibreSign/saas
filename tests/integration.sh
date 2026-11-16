@@ -96,7 +96,7 @@ configuration_snapshot() {
 	occ config:system:get trusted_domains &&
 		occ config:system:get overwritehost &&
 		occ config:system:get overwriteprotocol &&
-		occ config:system:get wordpress_dsn &&
+		occ config:system:get wordpress_dsn | sed 's/;password=[^;]*//' &&
 		wp option get nextcloud_api_host &&
 		wp option get siteurl
 }

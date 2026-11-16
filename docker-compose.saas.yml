@@ -1,6 +1,7 @@
 services:
   wordpress:
     environment:
+      WP_ENVIRONMENT_TYPE: local
       PROD_SITE_URL: https://account.libresign.coop
       LOCAL_SITE_URL: http://127.0.0.1:${WORDPRESS_HTTP_PORT:-8080}
       WORDPRESS_LOCAL_USERS_PASSWORD: ${WORDPRESS_LOCAL_USERS_PASSWORD:-admin}
@@ -62,7 +63,7 @@ services:
 
   nginx:
     ports:
-      - "${WORDPRESS_HTTP_PORT:-8080}:80"
+      - "127.0.0.1:${WORDPRESS_HTTP_PORT:-8080}:80"
     volumes:
       - ../.docker/wordpress-nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
 
@@ -70,6 +71,9 @@ services:
     extends:
       file: common-services.yml
       service: mariadb
+    networks:
+      - default
+      - wordpress-database
 
   mailpit:
     image: axllent/mailpit:v1.33.0
@@ -80,3 +84,7 @@ volumes:
   librecode-dev-proxy-certs:
     name: librecode-dev-proxy-certs
     external: true
+
+networks:
+  wordpress-database:
+    name: saas-wordpress-database
