@@ -1,0 +1,23 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "enabledManagers": ["custom.regex"],
+  "timezone": "America/Sao_Paulo",
+  "customManagers": [
+    {
+      "customType": "regex",
+      "managerFilePatterns": ["/^docker-compose\\.saas\\.yml$/"],
+      "matchStrings": [
+        "version=(?<currentValue>v\\d+\\.\\d+\\.\\d+) pin=(?<currentDigest>[0-9a-f]{40});.*? fetch -q (?<packageName>https:\\/\\/\\S+?\\.git) "
+      ],
+      "datasourceTemplate": "git-tags",
+      "depNameTemplate": "{{{replace '^.*/(.+)\\.git$' '$1' packageName}}}",
+      "versioningTemplate": "semver-coerced"
+    }
+  ],
+  "packageRules": [
+    {
+      "matchManagers": ["custom.regex"],
+      "schedule": ["* * * * 1"]
+    }
+  ]
+}
