@@ -21,7 +21,7 @@ These caches are ignored by Git.
 
 The static site (`site/`) is a regular cloned repository managed by
 `make up`. On the first run, the Makefile clones `https://github.com/LibreSign/site.git`
-automatically and checks out the commit set in `SITE_REPO_REF`.
+automatically and checks out `main`.
 
 Then start the stack:
 
@@ -112,13 +112,13 @@ URL by `make up`.
 `make up` refreshes the remote Docker images used by the WordPress, static site,
 and Nextcloud services and rebuilds local buildable services before starting the
 stack. During `make up site`, the `site/` clone is also synced from
-`https://github.com/LibreSign/site.git` and checked out at `SITE_REPO_REF`
-automatically, so no manual site update step is required.
+`https://github.com/LibreSign/site.git` (`main`) automatically, so no manual
+site update step is required.
 
-Every component cloned at runtime is pinned to a commit: the Nextcloud apps and
-the static site through the `*_REF` variables of the `Makefile`, and the
-WordPress plugins and theme through the `post_install_commands` in
-`docker-compose.saas.yml`. Bump these commits to update a component.
+The site, the Nextcloud apps and the LibreSign WordPress plugins and theme follow
+the `main` branch of their repositories. Polylang Pro and WooCommerce
+Subscriptions come from third-party mirrors, so `docker-compose.saas.yml` pins
+them to a commit; change the `pin=` value there to update them.
 
 On a fresh WordPress database, `make up` also performs the initial WordPress
 installation via WP-CLI and restarts the WordPress container once so the

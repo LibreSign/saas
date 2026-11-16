@@ -29,18 +29,13 @@ services:
           - slug: polylang-pro
             source: https://gitlab.com/wordpress-premium/polylang-pro
             post_install_commands:
-              - git -C "$$PLUGIN_DIR" fetch -q origin 851df56e647a4c19450d69ddff9c77aa67963a0d && git -C "$$PLUGIN_DIR" checkout -q 851df56e647a4c19450d69ddff9c77aa67963a0d
+              - pin=851df56e647a4c19450d69ddff9c77aa67963a0d; [ "$$(git -C "$$PLUGIN_DIR" rev-parse HEAD)" = "$$pin" ] || { git -C "$$PLUGIN_DIR" fetch -q origin "$$pin" && git -C "$$PLUGIN_DIR" checkout -q FETCH_HEAD; } || echo "Could not check out $$PLUGIN_DIR at $$pin, keeping the current commit" >&2
               - if [ ! -L "$$PLUGIN_DIR/integrations/ACF" ]; then rm -rf "$$PLUGIN_DIR/integrations/ACF" && ln -s acf "$$PLUGIN_DIR/integrations/ACF"; fi || true
           - slug: libresign-wp-customizations
             source: https://github.com/LibreSign/libresign-wp-customizations.git
-            post_install_commands:
-              - git -C "$$PLUGIN_DIR" fetch -q origin f2bf08e53013e46ca586ab53d90fc7eec9267600 && git -C "$$PLUGIN_DIR" checkout -q f2bf08e53013e46ca586ab53d90fc7eec9267600
-              - if [ ! -d wp-content/themes/libresign ]; then git clone -q https://github.com/LibreSign/wordpress-theme.git wp-content/themes/libresign; fi
-              - git -C "wp-content/themes/libresign" fetch -q origin 387d02d5622fa6fc90a3c2713ef0d6cd7d0ed846 && git -C "wp-content/themes/libresign" checkout -q 387d02d5622fa6fc90a3c2713ef0d6cd7d0ed846
           - slug: wp-simple-smtp
             source: https://github.com/LibreCodeCoop/wp-simple-smtp.git
             post_install_commands:
-              - git -C "$$PLUGIN_DIR" fetch -q origin 24729b5a34d8c67584b2c2608285d499866b2b25 && git -C "$$PLUGIN_DIR" checkout -q 24729b5a34d8c67584b2c2608285d499866b2b25
               - wp option update smtp_xmailer LibreSign
               - wp option update smtp_hostname localhost
               - wp option update smtp_host mailpit
@@ -54,17 +49,14 @@ services:
           - slug: woocommerce-nextcloud-admin-group-manager
             source: https://github.com/LibreSign/woocommerce-nextcloud-admin-group-manager.git
             post_install_commands:
-              - git -C "$$PLUGIN_DIR" fetch -q origin 4f4eb83b61bb423a2b730a552a604a33ab3c344d && git -C "$$PLUGIN_DIR" checkout -q 4f4eb83b61bb423a2b730a552a604a33ab3c344d
               - wp option update nextcloud_api_login ${NEXTCLOUD_ADMIN_USER:-admin}
               - wp option update nextcloud_api_password ${NEXTCLOUD_ADMIN_PASSWORD:-admin}
           - slug: woocommerce-restrict-switch
             source: https://github.com/LibreSign/woocommerce-restrict-switch.git
-            post_install_commands:
-              - git -C "$$PLUGIN_DIR" fetch -q origin c524fbf18447b61abdd93d9f5ffd379169242bb1 && git -C "$$PLUGIN_DIR" checkout -q c524fbf18447b61abdd93d9f5ffd379169242bb1
           - slug: woocommerce-subscriptions
             source: https://github.com/pronamic/woocommerce-subscriptions.git
             post_install_commands:
-              - git -C "$$PLUGIN_DIR" fetch -q origin 2459d9c8662884d62b9a92221eb21c7c6c051a62 && git -C "$$PLUGIN_DIR" checkout -q 2459d9c8662884d62b9a92221eb21c7c6c051a62
+              - pin=2459d9c8662884d62b9a92221eb21c7c6c051a62; [ "$$(git -C "$$PLUGIN_DIR" rev-parse HEAD)" = "$$pin" ] || { git -C "$$PLUGIN_DIR" fetch -q origin "$$pin" && git -C "$$PLUGIN_DIR" checkout -q FETCH_HEAD; } || echo "Could not check out $$PLUGIN_DIR at $$pin, keeping the current commit" >&2
               - wp option update woocommerce_subscriptions_apportion_recurring_price yes-upgrade
         wordpress_custom_themes:
           - slug: libresign
