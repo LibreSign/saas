@@ -6,8 +6,8 @@ download_app() {
 	curl -fsSL "https://github.com/LibreSign/$1/archive/$2.tar.gz" | tar -xz --strip-components=1 -C "custom_apps/$1"
 }
 
-download_app admin_group_manager ae7e1f9b67071b3d4bdae9f9865099ed0368f812
-download_app wordpress_login_backend 6837f710416f96c62176d7d2873fe28f9762189e
+download_app admin_group_manager 826b04a5364a03495da8bdfed8416eca1284a21b
+download_app wordpress_login_backend eab143d586b2331329d406ef4460734499fb66c4
 
 php occ app:install groupquota --force --keep-disabled
 php occ app:enable wordpress_login_backend
