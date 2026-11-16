@@ -1,0 +1,53 @@
+version: 2
+updates:
+  # Keep both submodules pinned to reviewed commits, rather than updating at runtime.
+  - package-ecosystem: gitsubmodule
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 4
+
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 4
+    groups:
+      npm-nonmajor:
+        patterns:
+          - "*"
+        update-types:
+          - minor
+          - patch
+
+  - package-ecosystem: docker-compose
+    directories:
+      - /
+      - /tests/E2E
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 4
+    groups:
+      docker-nonmajor:
+        patterns:
+          - "*"
+        update-types:
+          - minor
+          - patch
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 4
+    groups:
+      actions-nonmajor:
+        patterns:
+          - "*"
+        update-types:
+          - minor
+          - patch

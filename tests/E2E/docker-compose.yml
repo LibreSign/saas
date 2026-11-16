@@ -19,7 +19,7 @@ services:
 
   wordpress:
     extends:
-      file: ../../docker-compose.override.yml
+      file: ../../docker-compose.saas.yml
       service: wordpress
     image: ghcr.io/librecodecoop/wordpress-docker:latest
     depends_on:
@@ -33,7 +33,6 @@ services:
       WORDPRESS_TABLE_PREFIX: wp_
       PROD_SITE_URL: ""
       LOCAL_SITE_URL: http://localhost:8891
-      NEXTCLOUD_LOCAL_URL: http://nextcloud
       WORDPRESS_LOCAL_USERS_PASSWORD: ""
       WORDPRESS_LOCAL_RESET_ALL_USERS_PASSWORDS: "0"
       HOST_UID: "33"
@@ -42,7 +41,8 @@ services:
       test: ["CMD", "pidof", "php-fpm"]
       interval: 2s
       retries: 300
-    volumes:
+    # E2E runs over HTTP and does not need the development proxy CA volume.
+    volumes: !override
       - wordpress:/var/www/html
       - ./support:/e2e:ro
 
