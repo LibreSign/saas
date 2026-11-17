@@ -7,7 +7,7 @@
       "customType": "regex",
       "managerFilePatterns": ["/^docker-compose\\.saas\\.yml$/"],
       "matchStrings": [
-        "version=(?<currentValue>v\\d+\\.\\d+\\.\\d+) pin=(?<currentDigest>[0-9a-f]{40});.*? fetch -q (?<packageName>https:\\/\\/\\S+?\\.git) "
+        "source: (?<packageName>https:\\/\\/\\S+?\\.git)\\s+ref: (?<currentDigest>[0-9a-f]{40}) # (?<currentValue>v\\d+\\.\\d+\\.\\d+)"
       ],
       "datasourceTemplate": "git-tags",
       "depNameTemplate": "{{{replace '^.*/(.+)\\.git$' '$1' packageName}}}",

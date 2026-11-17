@@ -27,9 +27,9 @@ services:
         wordpress_archive_plugins: []
         wordpress_custom_plugins:
           - slug: polylang-pro
-            source: https://gitlab.com/wordpress-premium/polylang-pro
+            source: https://gitlab.com/wordpress-premium/polylang-pro.git
+            ref: 851df56e647a4c19450d69ddff9c77aa67963a0d # v3.7.6
             post_install_commands:
-              - version=v3.7.6 pin=851df56e647a4c19450d69ddff9c77aa67963a0d; [ "$$(git -C "$$PLUGIN_DIR" rev-parse HEAD)" = "$$pin" ] || { git -C "$$PLUGIN_DIR" fetch -q https://gitlab.com/wordpress-premium/polylang-pro.git "$$pin" && git -C "$$PLUGIN_DIR" checkout -q FETCH_HEAD; } || echo "Could not check out $$PLUGIN_DIR at $$version ($$pin), keeping the current commit" >&2
               - if [ ! -L "$$PLUGIN_DIR/integrations/ACF" ]; then rm -rf "$$PLUGIN_DIR/integrations/ACF" && ln -s acf "$$PLUGIN_DIR/integrations/ACF"; fi || true
           - slug: libresign-wp-customizations
             source: https://github.com/LibreSign/libresign-wp-customizations.git
@@ -55,8 +55,8 @@ services:
             source: https://github.com/LibreSign/woocommerce-restrict-switch.git
           - slug: woocommerce-subscriptions
             source: https://github.com/pronamic/woocommerce-subscriptions.git
+            ref: 2459d9c8662884d62b9a92221eb21c7c6c051a62 # v9.4.1
             post_install_commands:
-              - version=v9.4.1 pin=2459d9c8662884d62b9a92221eb21c7c6c051a62; [ "$$(git -C "$$PLUGIN_DIR" rev-parse HEAD)" = "$$pin" ] || { git -C "$$PLUGIN_DIR" fetch -q https://github.com/pronamic/woocommerce-subscriptions.git "$$pin" && git -C "$$PLUGIN_DIR" checkout -q FETCH_HEAD; } || echo "Could not check out $$PLUGIN_DIR at $$version ($$pin), keeping the current commit" >&2
               - wp option update woocommerce_subscriptions_apportion_recurring_price yes-upgrade
         wordpress_custom_themes:
           - slug: libresign
