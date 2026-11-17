@@ -118,9 +118,16 @@ site update step is required.
 The site, the Nextcloud apps and the LibreSign WordPress plugins and theme follow
 the `main` branch of their repositories. Polylang Pro and WooCommerce
 Subscriptions come from third-party mirrors, so `docker-compose.saas.yml` pins
-them to the commit of a release tag (`version=` and `pin=`). Renovate
-(`.github/renovate.json5`) checks the mirrors on Mondays and opens a pull request
-when a new release is tagged.
+them to a release tag with the `ref` field of the `wordpress-docker` setup config.
+Renovate (`.github/renovate.json5`) checks the mirrors on Mondays and opens a pull
+request when a new release is tagged. It only recognizes `ref` written right after
+`source` (ending in `.git`), with the tag as a comment:
+
+```yaml
+- slug: polylang-pro
+  source: https://gitlab.com/wordpress-premium/polylang-pro.git
+  ref: 851df56e647a4c19450d69ddff9c77aa67963a0d # v3.7.6
+```
 
 On a fresh WordPress database, `make up` also performs the initial WordPress
 installation via WP-CLI and restarts the WordPress container once so the
