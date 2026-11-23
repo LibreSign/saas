@@ -10,6 +10,6 @@
 		"env:stop": "docker compose -f tests/E2E/docker-compose.yml down -v"
 	},
 	"devDependencies": {
-		"@playwright/test": "^1.63.0"
+		"@playwright/test": "^1.65.1"
 	}
 }
